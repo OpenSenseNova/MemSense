@@ -1,6 +1,4 @@
-function getEnv(name, fallback = '') {
-  return process.env[name] || fallback;
-}
+import { getConfig } from '../config.js';
 
 async function postJson(url, body, headers = {}) {
   const res = await fetch(url, {
@@ -14,22 +12,23 @@ async function postJson(url, body, headers = {}) {
 }
 
 export async function embedText(text) {
-  const provider = getEnv('MEMSENSE_EMBEDDING_PROVIDER', 'openai');
-  const input = String(text || '').slice(0, Number(getEnv('MEMSENSE_EMBEDDING_MAX_CHARS', '4000')));
+  const cfg = getConfig();
+  const provider = cfg.embedding.provider;
+  const input = String(text || '').slice(0, cfg.embedding.maxChars);
   if (!input) return [];
 
   if (provider === 'bge_http') {
-    const url = getEnv('MEMSENSE_BGE_ENDPOINT', 'http://127.0.0.1:8000/embed');
-    const json = await postJson(url, { input, model: getEnv('MEMSENSE_BGE_MODEL', 'bge-large-zh-v1.5') });
+    const url = cfg.embedding.bgeEndpoint;
+    const json = await postJson(url, { input, model: cfg.embedding.bgeModel });
     const vec = json?.embedding || json?.data?.[0]?.embedding;
     if (!Array.isArray(vec)) throw new Error('bge_http invalid embedding response');
     return vec;
   }
 
   // openai-compatible endpoint: supports OpenAI or qwen embedding api with compatible format
-  const baseUrl = getEnv('MEMSENSE_OPENAI_BASE_URL', 'https://api.openai.com/v1');
-  const apiKey = getEnv('MEMSENSE_OPENAI_API_KEY');
-  const model = getEnv('MEMSENSE_EMBEDDING_MODEL', 'text-embedding-3-small');
+  const baseUrl = cfg.embedding.openaiBaseUrl;
+  const apiKey = cfg.embedding.openaiApiKey;
+  const model = cfg.embedding.model;
   if (!apiKey) throw new Error('MEMSENSE_OPENAI_API_KEY is required for openai provider');
   const json = await postJson(`${baseUrl.replace(/\/$/, '')}/embeddings`, { model, input }, { authorization: `Bearer ${apiKey}` });
   const vec = json?.data?.[0]?.embedding;

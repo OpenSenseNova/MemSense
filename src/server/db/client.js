@@ -1,9 +1,11 @@
 import pg from 'pg';
+import { getConfig } from '../config.js';
 
 const { Pool } = pg;
+const config = getConfig();
 
 export const pool = new Pool({
-  connectionString: process.env.MEMSENSE_DATABASE_URL,
+  connectionString: config.dbUrl,
   max: Number(process.env.MEMSENSE_DB_POOL_MAX || 20),
 });
 

@@ -1,8 +1,9 @@
 import { createApp } from './app.js';
+import { getConfig } from './config.js';
 
-const port = Number(process.env.MEMSENSE_PORT || 8787);
+const config = getConfig();
 const app = createApp();
 
-app.listen(port, () => {
-  console.log(`[memsense-server] listening on :${port}`);
+app.listen(config.port, () => {
+  console.log(`[memsense-server] listening on :${config.port}`);
 });
