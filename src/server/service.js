@@ -16,8 +16,8 @@ function normalizeQaChunkContent(raw) {
   }
   const user = String(parsed?.user || '').trim();
   const assistant = String(parsed?.assistant || '').trim();
-  if (!user || !assistant) {
-    throw new Error('memory_save requires both user_text and assistant_text');
+  if (!user) {
+    throw new Error('memory_save requires user_text');
   }
   return JSON.stringify({ user, assistant });
 }
@@ -31,6 +31,24 @@ export async function saveChunk(input) {
   VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13)
   RETURNING id, memory_id, timestamp_ms, score`;
   const qaContent = normalizeQaChunkContent(input.content);
+
+  const dedupCheck = await query(
+    `SELECT id, memory_id, timestamp_ms, score FROM memory_chunks
+     WHERE tenant_id = $1
+       AND scope = $2
+       AND ($3::text IS NULL OR session_id = $3)
+       AND ($4::text IS NULL OR user_id = $4)
+       AND content = $5
+       AND timestamp_ms >= $6
+     ORDER BY timestamp_ms DESC
+     LIMIT 1`,
+    [input.tenant_id, input.scope, input.session_id || null, input.user_id || null, qaContent, timestamp - 10 * 60 * 1000],
+  );
+  if (dedupCheck.rows.length) {
+    const ex = dedupCheck.rows[0];
+    return { memory_id: ex.memory_id, timestamp_ms: ex.timestamp_ms, score: ex.score, deduped: true };
+  }
+
   const vals = [
     memoryId,
     input.tenant_id,

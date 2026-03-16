@@ -59,21 +59,53 @@ function fail(errorCode: string, message: string, traceId: string, degraded = fa
   };
 }
 
+const sessionQaCache = new Map<string, Array<{ user: string; assistant: string; timestamp: number }>>();
+
+function contentToText(content: any): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((x) => {
+        if (!x) return "";
+        if (typeof x === "string") return x;
+        if (typeof x?.text === "string") return x.text;
+        return "";
+      })
+      .join(" ")
+      .trim();
+  }
+  if (typeof content?.text === "string") return content.text;
+  return "";
+}
+
+function buildQaFromHistory(messages: any[]): Array<{ user: string; assistant: string; timestamp: number }> {
+  const out: Array<{ user: string; assistant: string; timestamp: number }> = [];
+  let pendingUser: { text: string; ts: number } | null = null;
+  for (const m of messages || []) {
+    const role = String(m?.role || "");
+    const text = contentToText(m?.content || m?.text || "");
+    const ts = Number(m?.timestamp || Date.now());
+    if (!text) continue;
+    if (role === "user") {
+      if (pendingUser) out.push({ user: pendingUser.text, assistant: "", timestamp: pendingUser.ts });
+      pendingUser = { text, ts };
+      continue;
+    }
+    if (role === "assistant" && pendingUser) {
+      out.push({ user: pendingUser.text, assistant: text, timestamp: ts });
+      pendingUser = null;
+    }
+  }
+  if (pendingUser) out.push({ user: pendingUser.text, assistant: "", timestamp: pendingUser.ts });
+  return out;
+}
+
 const WriteSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    tenant_id: { type: "string" },
-    scope: { type: "string", enum: ["user", "team", "org", "task"] },
-    session_id: { type: "string" },
-    user_id: { type: "string" },
-    user_text: { type: "string" },
-    assistant_text: { type: "string" },
-    task_tag: { type: "string" },
-    tags: { type: "array", items: { type: "string" }, maxItems: 20 },
-    timestamp: { type: "integer", minimum: 0 },
+    k: { type: "integer", minimum: 1, maximum: 20 },
   },
-  required: ["tenant_id", "scope", "user_text", "assistant_text"],
 };
 
 const RetrieveSchema = {
@@ -96,39 +128,52 @@ export default {
   description: "Memsense memory plugin for OpenClaw",
   kind: "memory",
   register(api: OpenClawPluginApi) {
+    api.on("llm_input", async (event: any, ctx: any) => {
+      const sid = ctx?.sessionId || event?.sessionId;
+      if (!sid) return;
+      const qa = buildQaFromHistory(Array.isArray(event?.historyMessages) ? event.historyMessages : []);
+      sessionQaCache.set(String(sid), qa.slice(-40));
+    });
+
     // v1 aliases aligned with PRD naming: save/search/fetch_recent
-    api.registerTool({
+    api.registerTool((toolCtx) => ({
       name: "memory_save",
       label: "Memory Save",
-      description: "Save one QA chunk from conversation history (one user + one assistant turn)",
+      description: "Save last k conversation chunks from current session history (QA-only)",
       parameters: WriteSchema,
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("save");
         try {
-          const content = JSON.stringify({
-            user: String(params.user_text || "").trim(),
-            assistant: String(params.assistant_text || "").trim(),
-          });
-          const saved = await callApi("/v1/memory/save", {
-            tenant_id: params.tenant_id,
-            scope: params.scope,
-            session_id: params.session_id,
-            user_id: params.user_id,
-            content,
-            type_hint: "qa_chunk",
-            source: "session",
-            task_tag: params.task_tag,
-            tags: params.tags,
-            timestamp: params.timestamp,
-            score: 0.5,
-            confidence: 0.7,
-          });
-          return ok(saved, traceId);
+          const sid = toolCtx?.sessionId;
+          if (!sid) return fail("SAVE_FAILED", "sessionId not available", traceId);
+          const k = Number(params?.k ?? 5);
+          const qa = sessionQaCache.get(String(sid)) || [];
+          const selected = qa.slice(-k);
+          if (!selected.length) {
+            return ok({ accepted: false, reason: "no_session_history" }, traceId);
+          }
+
+          const chunks = [];
+          for (const item of selected) {
+            const saved = await callApi("/v1/memory/save", {
+              tenant_id: "default",
+              scope: "user",
+              session_id: String(sid),
+              content: JSON.stringify({ user: item.user, assistant: item.assistant || "" }),
+              type_hint: "qa_chunk",
+              source: "session",
+              timestamp: item.timestamp || Date.now(),
+              score: 0.5,
+              confidence: 0.7,
+            });
+            chunks.push(saved);
+          }
+          return ok({ accepted: true, k, saved_count: chunks.length, chunks }, traceId);
         } catch (e: any) {
           return fail("SAVE_FAILED", e?.message || "save failed", traceId);
         }
       },
-    });
+    }), { name: "memory_save" });
 
     api.registerTool({
       name: "memory_search",
