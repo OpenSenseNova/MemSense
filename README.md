@@ -59,7 +59,7 @@ openclaw plugins list
 
 ⚠️ Remaining placeholder(s) (explicitly tracked):
 - Dashboard auth is token-based RBAC for v1 (no SSO/OAuth yet).
-- Background worker (retry/DLQ) is not split as an independent service yet.
+- Worker retry/DLQ is implemented, but advanced ops panel for DLQ replay is not implemented yet.
 
 ## Dashboard RBAC
 

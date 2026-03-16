@@ -22,8 +22,26 @@ services:
       MEMSENSE_OPENAI_BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1
       MEMSENSE_EMBEDDING_MODEL: text-embedding-v4
       MEMSENSE_OPENAI_API_KEY: ${MEMSENSE_OPENAI_API_KEY:-}
+      MEMSENSE_DASHBOARD_TOKENS_JSON: ${MEMSENSE_DASHBOARD_TOKENS_JSON:-{"demo":"admin"}}
     ports:
       - '8787:8787'
+    volumes:
+      - ./:/app
+    depends_on:
+      - postgres
+
+  worker:
+    image: node:22
+    working_dir: /app
+    command: sh -c "npm install && npm run worker"
+    environment:
+      MEMSENSE_DATABASE_URL: postgresql://memsense:memsense@postgres:5432/memsense
+      MEMSENSE_EMBEDDING_PROVIDER: openai
+      MEMSENSE_OPENAI_BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1
+      MEMSENSE_EMBEDDING_MODEL: text-embedding-v4
+      MEMSENSE_OPENAI_API_KEY: ${MEMSENSE_OPENAI_API_KEY:-}
+      MEMSENSE_WORKER_MAX_ATTEMPTS: 5
+      MEMSENSE_WORKER_IDLE_MS: 800
     volumes:
       - ./:/app
     depends_on:

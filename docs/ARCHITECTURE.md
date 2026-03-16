@@ -38,6 +38,6 @@
 ## Explicitly unfinished items
 
 - Advanced retrieval rerank (hybrid + cross-encoder) not yet done
-- Background workers (retry/DLQ) not yet done
-- Dashboard auth and RBAC not yet done
+- Dedicated worker (retry/DLQ) is done; DLQ replay UI/tooling not yet done
+- Dashboard auth + RBAC is done with token roles; SSO/OAuth not yet done
 - SLA/metrics alerting not yet done

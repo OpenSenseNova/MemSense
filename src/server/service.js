@@ -33,10 +33,9 @@ export async function saveChunk(input) {
   const r = await query(sql, vals);
   const row = r.rows[0];
 
-  const embedding = await embedText(String(input.content || ''));
   await query(
-    `INSERT INTO memory_chunk_embeddings (chunk_id, embedding, model) VALUES ($1, $2::vector, $3)`,
-    [row.id, toPgVectorLiteral(embedding), process.env.MEMSENSE_EMBEDDING_MODEL || process.env.MEMSENSE_BGE_MODEL || 'unknown'],
+    `INSERT INTO embedding_jobs (chunk_id, payload, status) VALUES ($1, $2::jsonb, 'pending')`,
+    [row.id, JSON.stringify({ content: String(input.content || '') })],
   );
 
   await query(
@@ -65,10 +64,10 @@ export async function searchChunks({ tenant_id, scope, session_id, user_id, quer
   const qvec = await embedText(q);
   const qvecLiteral = toPgVectorLiteral(qvec);
   const sql = `SELECT c.memory_id, c.content, c.tags, c.score, c.confidence, c.timestamp_ms, c.session_id, c.user_id,
-    (1 - (e.embedding <=> $5::vector)) AS vector_score,
+    COALESCE((1 - (e.embedding <=> $5::vector)), 0) AS vector_score,
     (CASE WHEN c.content ILIKE '%' || $6 || '%' THEN 1 ELSE 0 END) AS lexical_score
   FROM memory_chunks c
-  JOIN memory_chunk_embeddings e ON e.chunk_id = c.id
+  LEFT JOIN memory_chunk_embeddings e ON e.chunk_id = c.id
   WHERE c.tenant_id = $1
     AND c.scope = $2
     AND ($3::text IS NULL OR c.session_id = $3)

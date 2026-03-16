@@ -11,6 +11,7 @@
     "test": "node --test test/*.test.mjs",
     "rehearsal:smoke": "bash scripts/rehearsal-smoke.sh",
     "server": "node src/server/index.js",
+    "worker": "node src/worker/index.js",
     "db:migrate": "node scripts/db-migrate.mjs"
   },
   "dependencies": {
