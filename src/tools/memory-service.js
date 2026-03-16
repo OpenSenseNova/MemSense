@@ -2,12 +2,15 @@ import { LocalMemoryStore } from "../storage/local-store.js";
 import { DedupGate } from "../core/dedup.js";
 import { validateWriteInput } from "../core/validation.js";
 import { SyncQueue } from "../storage/sync-queue.js";
+import { TriggerPipeline } from "../trigger/trigger-pipeline.js";
+import { buildChunk } from "../capture/chunk-builder.js";
 
 export class MemoryService {
   constructor() {
     this.store = new LocalMemoryStore();
     this.dedup = new DedupGate();
     this.syncQueue = new SyncQueue();
+    this.triggers = new TriggerPipeline();
   }
 
   save(raw) {
@@ -46,6 +49,25 @@ export class MemoryService {
 
   fetchRecent(params) {
     return this.store.listRecent(params);
+  }
+
+  captureTurn({ tenantId, scope = "user", sessionId, userId, userText, assistantText, taskTag }) {
+    const decision = this.triggers.decide(userText);
+    if (!decision.shouldSave) return { accepted: false, reason: "no_trigger" };
+
+    const chunk = buildChunk({
+      tenantId,
+      scope,
+      sessionId,
+      userId,
+      userText,
+      assistantText,
+      tags: decision.tags,
+      taskTag,
+      source: decision.source,
+    });
+    const saved = this.save(chunk);
+    return { ...saved, trigger: decision };
   }
 
   stats() {
