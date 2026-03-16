@@ -73,6 +73,11 @@ export async function saveChunk(input) {
   );
 
   await query(
+    `INSERT INTO tag_jobs (chunk_id, payload, status) VALUES ($1, $2::jsonb, 'pending')`,
+    [row.id, JSON.stringify({ content: qaContent })],
+  );
+
+  await query(
     `INSERT INTO memory_events (memory_id, tenant_id, scope, event_type, payload) VALUES ($1,$2,$3,'capture',$4::jsonb)`,
     [memoryId, input.tenant_id, input.scope, JSON.stringify({ source: input.source || 'session' })],
   );

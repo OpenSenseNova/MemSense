@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-for svc in server worker; do
+for svc in server worker tag-worker bge; do
   pid_file=".runtime/${svc}.pid"
   if [[ -f "$pid_file" ]]; then
     pid="$(cat "$pid_file")"

@@ -51,6 +51,19 @@ services:
     depends_on:
       - postgres
 
+  tag-worker:
+    image: node:22
+    working_dir: /app
+    command: sh -c "npm install && npm run tag-worker"
+    environment:
+      MEMSENSE_DATABASE_URL: ${MEMSENSE_DATABASE_URL:-postgresql://memsense:memsense@postgres:5432/memsense}
+      MEMSENSE_TAG_WORKER_MAX_ATTEMPTS: 4
+      MEMSENSE_TAG_WORKER_IDLE_MS: 1200
+    volumes:
+      - ./:/app
+    depends_on:
+      - postgres
+
   bge:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
     profiles: ["local-bge"]

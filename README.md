@@ -36,7 +36,7 @@ Memsense is built for real agent workloads:
 
 - OpenClaw plugin id: `memsense`
 - Exposed tools:
-  - `memory_save` (QA-only: one user turn + one assistant turn per chunk)
+  - `memory_save` (QA-only; captures latest session history with optional `k`, default 5)
   - `memory_search`
   - `memory_fetch_recent`
 
@@ -47,7 +47,7 @@ Memsense is built for real agent workloads:
 - **Plugin gateway** (`index.ts`) for OpenClaw tools
 - **Backend API** (`src/server`) for memory services
 - **Storage** (`memory_chunks`, `memory_chunk_embeddings`, `memory_events`)
-- **Worker** (`src/worker`) for embedding jobs with retry/DLQ
+- **Worker** (`src/worker`) for embedding + async tagging jobs (retry/DLQ)
 - **Dashboard** (`/dashboard`) with token-based RBAC
 
 ---
@@ -190,6 +190,9 @@ Examples:
   - queue claim with lock
   - exponential retry
   - DLQ fallback
+- Async tag enrichment (user-invisible):
+  - tag jobs run in background
+  - uses OpenClaw agent command internally for tag generation
 
 ---
 

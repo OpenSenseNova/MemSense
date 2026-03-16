@@ -1,6 +1,6 @@
 # Worker / Retry / DLQ
 
-Embedding is processed asynchronously by an independent worker service.
+Embedding and tag enrichment are processed asynchronously by independent workers.
 
 ## Flow
 1. Save request inserts chunk

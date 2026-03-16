@@ -75,3 +75,26 @@ CREATE TABLE IF NOT EXISTS embedding_dlq (
   error TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS tag_jobs (
+  id BIGSERIAL PRIMARY KEY,
+  chunk_id BIGINT NOT NULL REFERENCES memory_chunks(id) ON DELETE CASCADE,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  attempts INT NOT NULL DEFAULT 0,
+  last_error TEXT,
+  run_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tag_jobs_status_runat ON tag_jobs(status, run_at);
+
+CREATE TABLE IF NOT EXISTS tag_dlq (
+  id BIGSERIAL PRIMARY KEY,
+  job_id BIGINT NOT NULL,
+  chunk_id BIGINT NOT NULL,
+  payload JSONB NOT NULL,
+  error TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

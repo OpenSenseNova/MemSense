@@ -28,4 +28,12 @@ else
   echo "[memsense] worker started pid=$(cat .runtime/worker.pid)"
 fi
 
-echo "[memsense] logs: tail -f .runtime/server.log .runtime/worker.log"
+if [[ -f .runtime/tag-worker.pid ]] && kill -0 "$(cat .runtime/tag-worker.pid)" 2>/dev/null; then
+  echo "[memsense] tag-worker already running"
+else
+  nohup npm run tag-worker > .runtime/tag-worker.log 2>&1 &
+  echo $! > .runtime/tag-worker.pid
+  echo "[memsense] tag-worker started pid=$(cat .runtime/tag-worker.pid)"
+fi
+
+echo "[memsense] logs: tail -f .runtime/server.log .runtime/worker.log .runtime/tag-worker.log"
