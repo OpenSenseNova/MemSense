@@ -1,7 +1,22 @@
+<div align="center">
+
 # Memsense
 
-**Production-ready memory system for OpenClaw agents**  
-Vector retrieval, hybrid rerank, async embedding pipeline, and operational dashboard — all in one plugin-backed architecture.
+<p><strong>Production-ready memory system for OpenClaw agents</strong></p>
+<p>Vector retrieval · Hybrid rerank · Async worker · Operational dashboard</p>
+
+<p>
+  <img alt="version" src="https://img.shields.io/badge/version-0.1.0-4f46e5" />
+  <img alt="status" src="https://img.shields.io/badge/status-beta-0ea5e9" />
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-22c55e" />
+  <img alt="deployment" src="https://img.shields.io/badge/deployment-self--hosted-f59e0b" />
+</p>
+
+<p>
+  <img alt="pricing" src="https://img.shields.io/badge/pricing-open--source%20%7C%20infra--cost%20only-111827" />
+</p>
+
+</div>
 
 ---
 
