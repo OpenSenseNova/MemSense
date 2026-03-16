@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Memsense Dashboard</title>
+  <style>body{font-family:Arial;padding:20px} .kpis{display:flex;gap:16px} .card{border:1px solid #ddd;padding:12px;border-radius:8px} table{border-collapse:collapse;width:100%;margin-top:16px} td,th{border:1px solid #ddd;padding:8px}</style>
+</head>
+<body>
+  <h2>Memsense Dashboard (Session-first)</h2>
+  <div class="kpis">
+    <div class="card">Total: <b id="total">-</b></div>
+    <div class="card">Active: <b id="active">-</b></div>
+    <div class="card">Deleted: <b id="deleted">-</b></div>
+  </div>
+  <table>
+    <thead><tr><th>memory_id</th><th>tenant</th><th>scope</th><th>session</th><th>user</th><th>score</th><th>timestamp</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <script>
+    async function load(){
+      const r = await fetch('/v1/dashboard/overview', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({})});
+      const j = await r.json();
+      document.getElementById('total').textContent = j.data.counts.total;
+      document.getElementById('active').textContent = j.data.counts.active;
+      document.getElementById('deleted').textContent = j.data.counts.deleted;
+      const tb = document.getElementById('rows');
+      tb.innerHTML = '';
+      j.data.latest.forEach(x => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${x.memory_id}</td><td>${x.tenant_id}</td><td>${x.scope}</td><td>${x.session_id||''}</td><td>${x.user_id||''}</td><td>${x.score}</td><td>${new Date(Number(x.timestamp_ms)).toLocaleString()}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+    load();
+  </script>
+</body>
+</html>

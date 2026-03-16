@@ -1,4 +1,6 @@
 import express from 'express';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   saveChunk,
   fetchRecent,
@@ -8,11 +10,14 @@ import {
   promoteDemote,
   forget,
   audit,
+  dashboardOverview,
 } from './service.js';
 
 export function createApp() {
   const app = express();
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
   app.use(express.json({ limit: '1mb' }));
+  app.use('/dashboard', express.static(path.join(__dirname, 'public')));
 
   app.get('/healthz', (_req, res) => {
     res.json({ ok: true });
@@ -87,6 +92,15 @@ export function createApp() {
   app.post('/v1/memory/audit', async (req, res) => {
     try {
       const data = await audit(req.body || {});
+      res.json({ ok: true, data });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  });
+
+  app.post('/v1/dashboard/overview', async (req, res) => {
+    try {
+      const data = await dashboardOverview(req.body || {});
       res.json({ ok: true, data });
     } catch (e) {
       res.status(500).json({ ok: false, error: String(e?.message || e) });
