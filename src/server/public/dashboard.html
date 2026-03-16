@@ -83,6 +83,28 @@
       </div>
     </div>
 
+    <div class="card search-card">
+      <div class="search-row" style="margin-bottom:8px">
+        <strong>Tool Playground (Real API)</strong>
+        <span class="hint">直接调用与模型相同接口：/v1/memory/search 与 /v1/memory/fetch_recent</span>
+      </div>
+      <div class="search-row" style="margin-bottom:8px">
+        <input id="toolTenant" class="search-input" placeholder="tenant_id (default)" value="default" />
+        <input id="toolScope" class="search-input" placeholder="scope (user/team/org/task)" value="user" />
+        <input id="toolSession" class="search-input" placeholder="session_id (optional)" />
+      </div>
+      <div class="search-row" style="margin-bottom:8px">
+        <input id="toolQuery" class="search-input" placeholder="search.query" />
+        <div class="limit">top_k <input id="toolTopK" type="number" min="1" max="20" value="8" /></div>
+        <button class="btn" onclick="runToolSearch()">Run memory_search</button>
+      </div>
+      <div class="search-row">
+        <div class="limit">recent.limit <input id="toolRecentLimit" type="number" min="1" max="100" value="10" /></div>
+        <button class="btn secondary" onclick="runToolFetchRecent()">Run memory_fetch_recent</button>
+      </div>
+      <div id="toolResult" class="empty" style="margin-top:8px;text-align:left;white-space:pre-wrap">Tool result will appear here.</div>
+    </div>
+
     <div id="error" class="error" style="display:none"></div>
 
     <div class="kpis">
@@ -187,7 +209,49 @@
 
     function resetSearch() { byId('q').value = ''; load(); }
 
+    function toolBasePayload() {
+      return {
+        tenant_id: byId('toolTenant').value || 'default',
+        scope: byId('toolScope').value || 'user',
+        session_id: byId('toolSession').value || null,
+      };
+    }
+
+    function setToolResult(data) {
+      byId('toolResult').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    async function runToolSearch() {
+      try {
+        const payload = {
+          ...toolBasePayload(),
+          query: byId('toolQuery').value || '',
+          top_k: Number(byId('toolTopK').value || 8),
+        };
+        const r = await fetch('/v1/memory/search', { method:'POST', headers: authHeaders, body: JSON.stringify(payload) });
+        const j = await r.json();
+        setToolResult(j);
+      } catch (e) {
+        setToolResult(String(e?.message || e));
+      }
+    }
+
+    async function runToolFetchRecent() {
+      try {
+        const payload = {
+          ...toolBasePayload(),
+          limit: Number(byId('toolRecentLimit').value || 10),
+        };
+        const r = await fetch('/v1/memory/fetch_recent', { method:'POST', headers: authHeaders, body: JSON.stringify(payload) });
+        const j = await r.json();
+        setToolResult(j);
+      } catch (e) {
+        setToolResult(String(e?.message || e));
+      }
+    }
+
     async function load(){
+
       showError('');
       const payload = { q: byId('q').value || null, limit: Number(byId('limit').value || 50) };
       const r = await fetch('/v1/dashboard/overview', { method:'POST', headers: authHeaders, body: JSON.stringify(payload) });

@@ -166,6 +166,11 @@ Memsense supports two modes:
 
 ## Enter Dashboard
 
+Dashboard includes a **Tool Playground** panel to test real API calls for:
+- `memory_search` (`/v1/memory/search`)
+- `memory_fetch_recent` (`/v1/memory/fetch_recent`)
+
+
 After startup, open:
 
 - `http://127.0.0.1:8787/dashboard?token=<your_token>`
