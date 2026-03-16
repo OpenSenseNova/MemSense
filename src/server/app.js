@@ -20,8 +20,13 @@ export function createApp() {
   const app = express();
   const { requireRole } = createAuth();
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const publicDir = path.join(__dirname, 'public');
+  const dashboardHtml = path.join(publicDir, 'dashboard.html');
   app.use(express.json({ limit: '1mb' }));
-  app.use('/dashboard', requireRole('viewer'), express.static(path.join(__dirname, 'public')));
+  app.get(['/dashboard', '/dashboard/'], requireRole('viewer'), (_req, res) => {
+    res.sendFile(dashboardHtml);
+  });
+  app.use('/dashboard', requireRole('viewer'), express.static(publicDir, { index: false, redirect: false }));
 
   app.get('/healthz', (_req, res) => {
     res.json({ ok: true });

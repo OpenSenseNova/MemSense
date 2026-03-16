@@ -131,20 +131,31 @@ export async function audit({ memory_id }) {
   return { events: r.rows };
 }
 
-export async function dashboardOverview({ tenant_id, scope, session_id, user_id, limit = 20 }) {
-  const args = [tenant_id || null, scope || null, session_id || null, user_id || null, Number(limit)];
-  const where = `WHERE ($1::text IS NULL OR tenant_id = $1)
-    AND ($2::text IS NULL OR scope = $2)
-    AND ($3::text IS NULL OR session_id = $3)
-    AND ($4::text IS NULL OR user_id = $4)`;
+export async function dashboardOverview({ q, limit = 20 }) {
+  const queryText = String(q || '').trim();
+  const search = queryText ? `%${queryText}%` : null;
+  const args = [search, Number(limit)];
+  const where = `WHERE (
+    $1::text IS NULL
+    OR memory_id ILIKE $1
+    OR tenant_id ILIKE $1
+    OR scope ILIKE $1
+    OR COALESCE(session_id, '') ILIKE $1
+    OR COALESCE(user_id, '') ILIKE $1
+    OR content ILIKE $1
+    OR COALESCE(type_hint, '') ILIKE $1
+    OR COALESCE(source, '') ILIKE $1
+    OR COALESCE(tags::text, '') ILIKE $1
+    OR COALESCE(status, '') ILIKE $1
+  )`;
 
-  const totalQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where}`, args.slice(0, 4));
-  const activeQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'active'`, args.slice(0, 4));
-  const deletedQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'deleted'`, args.slice(0, 4));
+  const totalQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where}`, [search]);
+  const activeQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'active'`, [search]);
+  const deletedQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'deleted'`, [search]);
   const latestQ = await query(
-    `SELECT memory_id, tenant_id, scope, session_id, user_id, score, timestamp_ms, status
+    `SELECT memory_id, tenant_id, scope, session_id, user_id, content, type_hint, tags, score, confidence, source, timestamp_ms, status
      FROM memory_chunks ${where}
-     ORDER BY timestamp_ms DESC LIMIT $5`,
+     ORDER BY timestamp_ms DESC LIMIT $2`,
     args,
   );
   return {

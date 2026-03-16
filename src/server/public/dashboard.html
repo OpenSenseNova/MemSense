@@ -4,67 +4,203 @@
   <meta charset="utf-8" />
   <title>Memsense Dashboard</title>
   <style>
-    body{font-family:Arial;padding:20px} .kpis{display:flex;gap:16px;margin-bottom:12px}
-    .card{border:1px solid #ddd;padding:12px;border-radius:8px}
-    table{border-collapse:collapse;width:100%;margin-top:16px} td,th{border:1px solid #ddd;padding:8px}
-    .filters{display:flex;gap:8px;flex-wrap:wrap}
-    input,select,button{padding:6px}
+    :root{
+      --bg:#0b1020; --panel:#121933; --panel-2:#182142; --text:#eef2ff; --muted:#97a3cf;
+      --line:#283463; --accent:#7c9cff; --accent-2:#8ef0c7; --danger:#ff8f8f; --tag:#23315f;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#0a0f1d,#101733 35%,#0c1226);color:var(--text);padding:18px;font-size:14px}
+    .shell{max-width:1480px;margin:0 auto}
+    .hero{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;margin-bottom:12px}
+    .title{font-size:24px;font-weight:780;letter-spacing:.2px;margin:0}
+    .subtitle{margin-top:4px;color:var(--muted);font-size:12px}
+    .card{background:rgba(18,25,51,.9);border:1px solid rgba(124,156,255,.16);border-radius:14px}
+    .search-card{padding:12px;margin-bottom:12px}
+    .search-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .search-input,.limit input{background:#0b1228;border:1px solid var(--line);color:var(--text);border-radius:10px;outline:none}
+    .search-input{flex:1;min-width:280px;padding:11px 12px;font-size:14px}
+    .search-input:focus,.limit input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,156,255,.12)}
+    .btn,.mini-btn{border:none;border-radius:10px;font-weight:700;cursor:pointer}
+    .btn{padding:11px 13px;background:var(--accent);color:#081022}
+    .btn.secondary{background:#1f2a57;color:#dce6ff}
+    .meta-row{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+    .toggle,.limit,.hint{color:var(--muted);font-size:12px}
+    .limit{display:flex;gap:6px;align-items:center}
+    .limit input{width:74px;padding:8px 9px}
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+    .kpi{padding:10px 12px}
+    .kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    .kpi-value{margin-top:4px;font-size:22px;font-weight:800;line-height:1.1}
+    .list{display:flex;flex-direction:column;gap:8px}
+    .memory-card{padding:10px 12px}
+    .memory-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .memory-id{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#aab7e8;word-break:break-all}
+    .status{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid}
+    .status.active{background:rgba(142,240,199,.10);border-color:rgba(142,240,199,.28);color:var(--accent-2)}
+    .status.archived{background:rgba(255,214,102,.10);border-color:rgba(255,214,102,.28);color:#ffd666}
+    .status.deleted{background:rgba(255,143,143,.10);border-color:rgba(255,143,143,.28);color:var(--danger)}
+    .content{margin-top:6px;font-size:14px;line-height:1.45;white-space:pre-wrap;color:#f6f8ff}
+    .content-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+    .bubble{background:#0b1228;border:1px solid var(--line);border-radius:10px;padding:8px}
+    .bubble-label{font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em}
+    .compact-line{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:7px;color:var(--muted);font-size:12px;line-height:1.4}
+    .sep{opacity:.35}
+    .tags{display:inline-flex;gap:6px;flex-wrap:wrap}
+    .tag{background:var(--tag);border:1px solid #3a4e95;color:#dfe7ff;border-radius:999px;padding:2px 8px;font-size:11px}
+    .memory-footer{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(124,156,255,.12)}
+    .scores{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+    .score-pill{background:#0b1228;border:1px solid var(--line);padding:5px 8px;border-radius:8px}
+    .actions{display:flex;gap:6px;flex-wrap:wrap}
+    .mini-btn{padding:6px 8px;font-size:11px}
+    .mini-btn.secondary{background:#24315f;color:#dce6ff}
+    .mini-btn.danger{background:#5f2631;color:#ffd9de}
+    .empty,.error{padding:12px;border-radius:12px}
+    .empty{color:var(--muted);background:rgba(18,25,51,.65);border:1px dashed var(--line);text-align:center}
+    .error{margin-bottom:10px;background:rgba(95,38,49,.45);border:1px solid rgba(255,143,143,.25);color:#ffd7dd;white-space:pre-wrap}
+    @media (max-width: 980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.content-pair{grid-template-columns:1fr}}
+    @media (max-width: 640px){body{padding:12px}.hero{flex-direction:column;align-items:flex-start}.kpis{grid-template-columns:1fr}.search-row{flex-direction:column;align-items:stretch}}
   </style>
 </head>
 <body>
-  <h2>Memsense Dashboard (Session-first)</h2>
-  <div class="filters">
-    <input id="tenant" placeholder="tenant_id" />
-    <select id="scope"><option value="">scope(all)</option><option>user</option><option>team</option><option>org</option><option>task</option></select>
-    <input id="session" placeholder="session_id" />
-    <input id="user" placeholder="user_id" />
-    <button onclick="load()">查询</button>
+  <div class="shell">
+    <div class="hero">
+      <div>
+        <h1 class="title">Memsense Dashboard</h1>
+        <div class="subtitle">单框模糊搜索：content / ID / tags / user / source / scope / status</div>
+      </div>
+      <div class="hint">按最新时间倒序</div>
+    </div>
+
+    <div class="card search-card">
+      <div class="search-row">
+        <input id="q" class="search-input" placeholder="搜索 memory 内容、ID、tag、user、source、scope、status…" value="demo" />
+        <button class="btn" onclick="load()">搜索</button>
+        <button class="btn secondary" onclick="resetSearch()">清空</button>
+      </div>
+      <div class="meta-row">
+        <label class="toggle"><input type="checkbox" id="showDeleted" onchange="renderRows(window.__latest || [])" /> 显示 deleted</label>
+        <div class="limit">结果数 <input id="limit" type="number" min="1" max="200" value="50" /></div>
+      </div>
+    </div>
+
+    <div id="error" class="error" style="display:none"></div>
+
+    <div class="kpis">
+      <div class="card kpi"><div class="kpi-label">Matched</div><div class="kpi-value" id="total">-</div></div>
+      <div class="card kpi"><div class="kpi-label">Active</div><div class="kpi-value" id="active">-</div></div>
+      <div class="card kpi"><div class="kpi-label">Deleted</div><div class="kpi-value" id="deleted">-</div></div>
+      <div class="card kpi"><div class="kpi-label">Showing</div><div class="kpi-value" id="showing">-</div></div>
+    </div>
+
+    <div id="rows" class="list"></div>
   </div>
-  <div class="kpis">
-    <div class="card">Total: <b id="total">-</b></div>
-    <div class="card">Active: <b id="active">-</b></div>
-    <div class="card">Deleted: <b id="deleted">-</b></div>
-  </div>
-  <table>
-    <thead><tr><th>memory_id</th><th>tenant</th><th>scope</th><th>session</th><th>user</th><th>score</th><th>status</th><th>timestamp</th><th>op</th></tr></thead>
-    <tbody id="rows"></tbody>
-  </table>
+
   <script>
     const byId = (id) => document.getElementById(id);
+    const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const token = new URLSearchParams(location.search).get('token') || localStorage.getItem('memsense_token') || prompt('Input dashboard token');
     if (token) localStorage.setItem('memsense_token', token);
     const authHeaders = { 'content-type': 'application/json', 'x-memsense-token': token || '' };
 
+    function tryParseJsonText(text) { try { return JSON.parse(text); } catch { return null; } }
+    function statusClass(status) { return ['active','archived','deleted'].includes(status) ? status : 'archived'; }
+
+    function contentPreview(x) {
+      const raw = String(x.content || '');
+      const parsed = tryParseJsonText(raw);
+      if (parsed && typeof parsed === 'object' && (parsed.user || parsed.assistant)) {
+        return `
+          <div class="content-pair">
+            <div class="bubble"><div class="bubble-label">User</div><div>${escapeHtml(parsed.user || '')}</div></div>
+            <div class="bubble"><div class="bubble-label">Assistant</div><div>${escapeHtml(parsed.assistant || '')}</div></div>
+          </div>`;
+      }
+      return `<div class="content">${escapeHtml(raw)}</div>`;
+    }
+
+    function tagsInline(tags) {
+      if (!Array.isArray(tags) || tags.length === 0) return '<span>tags: —</span>';
+      return `<span>tags:</span><span class="tags">${tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</span>`;
+    }
+
+    function compactMeta(x) {
+      const items = [
+        `tenant:${escapeHtml(x.tenant_id || '—')}`,
+        `scope:${escapeHtml(x.scope || '—')}`,
+        `user:${escapeHtml(x.user_id || '—')}`,
+        `session:${escapeHtml(x.session_id || '—')}`,
+        `type:${escapeHtml(x.type_hint || '—')}`,
+        `source:${escapeHtml(x.source || '—')}`,
+        `time:${new Date(Number(x.timestamp_ms)).toLocaleString()}`,
+      ];
+      return items.map((t,i)=>`${i?'<span class="sep">•</span>':''}<span>${t}</span>`).join('');
+    }
+
     async function setStatus(memoryId, status){
-      await fetch('/v1/dashboard/set_status', {
-        method:'POST', headers: authHeaders,
-        body: JSON.stringify({ memory_id: memoryId, status })
-      });
+      const res = await fetch('/v1/dashboard/set_status', { method: 'POST', headers: authHeaders, body: JSON.stringify({ memory_id: memoryId, status }) });
+      if (!res.ok) return showError(`set_status failed: ${res.status}`);
       await load();
     }
 
+    function showError(text) {
+      const el = byId('error');
+      if (!text) { el.style.display = 'none'; el.textContent = ''; return; }
+      el.style.display = 'block'; el.textContent = text;
+    }
+
+    function renderRows(items) {
+      const showDeleted = byId('showDeleted').checked;
+      const list = showDeleted ? items : items.filter(x => x.status !== 'deleted');
+      byId('showing').textContent = list.length;
+      const root = byId('rows');
+      root.innerHTML = '';
+      if (!list.length) {
+        root.innerHTML = `<div class="empty">没有匹配到结果。换个关键词试试，比如 content、user、source、tag 或 memory_id。</div>`;
+        return;
+      }
+      list.forEach(x => {
+        const article = document.createElement('article');
+        article.className = 'card memory-card';
+        article.innerHTML = `
+          <div class="memory-top">
+            <div class="memory-id">${escapeHtml(x.memory_id)}</div>
+            <div class="status ${statusClass(x.status)}">${escapeHtml(x.status)}</div>
+          </div>
+          ${contentPreview(x)}
+          <div class="compact-line">${compactMeta(x)}</div>
+          <div class="compact-line">${tagsInline(x.tags)}</div>
+          <div class="memory-footer">
+            <div class="scores">
+              <div class="score-pill">score <b>${escapeHtml(x.score)}</b></div>
+              <div class="score-pill">conf <b>${escapeHtml(x.confidence)}</b></div>
+            </div>
+            <div class="actions">
+              <button class="mini-btn secondary" data-id="${escapeHtml(x.memory_id)}" data-s="archived">归档</button>
+              <button class="mini-btn secondary" data-id="${escapeHtml(x.memory_id)}" data-s="active">恢复</button>
+              <button class="mini-btn danger" data-id="${escapeHtml(x.memory_id)}" data-s="deleted">删除</button>
+            </div>
+          </div>`;
+        root.appendChild(article);
+      });
+      root.querySelectorAll('button[data-id]').forEach(btn => btn.addEventListener('click', () => setStatus(btn.dataset.id, btn.dataset.s)));
+    }
+
+    function resetSearch() { byId('q').value = ''; load(); }
+
     async function load(){
-      const payload = {
-        tenant_id: byId('tenant').value || null,
-        scope: byId('scope').value || null,
-        session_id: byId('session').value || null,
-        user_id: byId('user').value || null,
-        limit: 50,
-      };
-      const r = await fetch('/v1/dashboard/overview', {method:'POST', headers: authHeaders, body: JSON.stringify(payload)});
+      showError('');
+      const payload = { q: byId('q').value || null, limit: Number(byId('limit').value || 50) };
+      const r = await fetch('/v1/dashboard/overview', { method:'POST', headers: authHeaders, body: JSON.stringify(payload) });
       const j = await r.json();
+      if (!r.ok || !j.ok) return showError((j && (j.error || j.message)) ? `${j.error || j.message}` : `request failed: ${r.status}`);
       byId('total').textContent = j.data.counts.total;
       byId('active').textContent = j.data.counts.active;
       byId('deleted').textContent = j.data.counts.deleted;
-      const tb = byId('rows');
-      tb.innerHTML = '';
-      j.data.latest.forEach(x => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${x.memory_id}</td><td>${x.tenant_id}</td><td>${x.scope}</td><td>${x.session_id||''}</td><td>${x.user_id||''}</td><td>${x.score}</td><td>${x.status}</td><td>${new Date(Number(x.timestamp_ms)).toLocaleString()}</td><td><button data-id='${x.memory_id}' data-s='archived'>归档</button> <button data-id='${x.memory_id}' data-s='active'>恢复</button></td>`;
-        tb.appendChild(tr);
-      });
-      tb.querySelectorAll('button[data-id]').forEach(btn=>btn.addEventListener('click',()=>setStatus(btn.dataset.id, btn.dataset.s)));
+      window.__latest = j.data.latest || [];
+      renderRows(window.__latest);
     }
+
+    byId('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
     load();
   </script>
 </body>
