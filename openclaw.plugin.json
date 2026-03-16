@@ -1,5 +1,5 @@
 {
-  "id": "memory-os-fast",
+  "id": "memsense",
   "kind": "memory",
   "configSchema": {
     "type": "object",

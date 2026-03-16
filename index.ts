@@ -70,9 +70,9 @@ const RetrieveSchema = {
 };
 
 export default {
-  id: "memory-os-fast",
-  name: "Memory OS (Fast)",
-  description: "Fast-lane memory tools for OpenClaw plugin mode",
+  id: "memsense",
+  name: "Memsense",
+  description: "Memsense memory plugin for OpenClaw",
   kind: "memory",
   register(api: OpenClawPluginApi) {
     api.registerTool({

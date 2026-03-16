@@ -1,9 +1,9 @@
 {
-  "name": "memory-os-openclaw-plugin",
+  "name": "memsense",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Memory OS plugin for OpenClaw (fast lane + async lifecycle stubs)",
+  "description": "Memsense memory plugin for OpenClaw",
   "peerDependencies": {
     "openclaw": ">=2026.3.1"
   },
