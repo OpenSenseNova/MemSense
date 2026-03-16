@@ -25,7 +25,7 @@
 Memsense is built for real agent workloads:
 
 - **Long-term memory that scales** (PostgreSQL + pgvector)
-- **Better retrieval quality** (vector + lexical + hybrid rerank)
+- **Better retrieval quality** (vector + FTS lexical dual recall + temporal-aware hybrid rerank + diversity selection)
 - **Reliable write path** (async worker, retry, DLQ)
 - **Operational visibility** (session-first dashboard + RBAC)
 - **OpenClaw-native integration** (memory slot plugin)
@@ -198,6 +198,7 @@ Examples:
 - Async tag enrichment (user-invisible):
   - tag jobs run in background
   - uses OpenClaw agent command internally for tag generation
+  - generates both `tags` and a single `memory_kind` (`stable | preference | episodic | ephemeral`)
 
 ---
 

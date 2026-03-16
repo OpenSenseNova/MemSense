@@ -9,10 +9,14 @@ async function processOne(job) {
   const payload = job.payload || {};
   const content = String(payload.content || '');
   const generated = await generateTagsWithOpenClaw(content);
-  const current = await query(`SELECT tags FROM memory_chunks WHERE id = $1 LIMIT 1`, [job.chunk_id]);
+  const current = await query(`SELECT tags, memory_kind FROM memory_chunks WHERE id = $1 LIMIT 1`, [job.chunk_id]);
   const existing = current.rows[0]?.tags || [];
-  const merged = mergeTags(existing, generated);
-  await query(`UPDATE memory_chunks SET tags = $2::jsonb, updated_at = NOW() WHERE id = $1`, [job.chunk_id, JSON.stringify(merged)]);
+  const merged = mergeTags(existing, generated.tags);
+  const memoryKind = generated.memory_kind || current.rows[0]?.memory_kind || 'episodic';
+  await query(
+    `UPDATE memory_chunks SET tags = $2::jsonb, memory_kind = $3, updated_at = NOW() WHERE id = $1`,
+    [job.chunk_id, JSON.stringify(merged), memoryKind],
+  );
   await markTagJobDone(job.id);
 }
 

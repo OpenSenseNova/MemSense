@@ -156,6 +156,7 @@
         `user:${escapeHtml(x.user_id || '—')}`,
         `session:${escapeHtml(x.session_id || '—')}`,
         `type:${escapeHtml(x.type_hint || '—')}`,
+        `kind:${escapeHtml(x.memory_kind || 'episodic')}`,
         `source:${escapeHtml(x.source || '—')}`,
         `time:${new Date(Number(x.timestamp_ms)).toLocaleString()}`,
       ];

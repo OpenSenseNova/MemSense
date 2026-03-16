@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS memory_chunks (
   user_id TEXT,
   content TEXT NOT NULL,
   type_hint TEXT NOT NULL DEFAULT 'qa_chunk',
+  memory_kind TEXT NOT NULL DEFAULT 'episodic',
   tags JSONB NOT NULL DEFAULT '[]'::jsonb,
   task_tag TEXT,
   source TEXT NOT NULL DEFAULT 'session',
@@ -19,6 +20,11 @@ CREATE TABLE IF NOT EXISTS memory_chunks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE memory_chunks ADD COLUMN IF NOT EXISTS memory_kind TEXT;
+ALTER TABLE memory_chunks ALTER COLUMN memory_kind SET DEFAULT 'episodic';
+UPDATE memory_chunks SET memory_kind = 'episodic' WHERE memory_kind IS NULL;
+ALTER TABLE memory_chunks ALTER COLUMN memory_kind SET NOT NULL;
 
 CREATE TABLE IF NOT EXISTS memory_chunk_embeddings (
   chunk_id BIGINT PRIMARY KEY REFERENCES memory_chunks(id) ON DELETE CASCADE,
@@ -35,6 +41,10 @@ CREATE INDEX IF NOT EXISTS idx_chunks_user
   ON memory_chunks (tenant_id, scope, user_id, timestamp_ms DESC);
 CREATE INDEX IF NOT EXISTS idx_chunks_status
   ON memory_chunks (tenant_id, scope, status, timestamp_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_chunks_kind_time
+  ON memory_chunks (tenant_id, scope, memory_kind, timestamp_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_chunks_fts_simple
+  ON memory_chunks USING GIN (to_tsvector('simple', COALESCE(content, '')));
 
 -- NOTE:
 -- Some pgvector versions require fixed dimensions (for example vector(1024))
