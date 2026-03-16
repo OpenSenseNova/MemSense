@@ -66,8 +66,19 @@ const sessionPendingAutoSave = new Map<string, { user: string; tags: string[]; t
 const sessionInjected = new Set<string>();
 const triggerPipeline = new TriggerPipeline();
 
+
+function stripMessageEnvelope(text: string): string {
+  let t = String(text || "").trim();
+  t = t.replace(/^Sender \(untrusted metadata\):\s*```json\s*[\s\S]*?```\s*/i, "");
+  t = t.replace(/^```json\s*[\s\S]*?```\s*/i, "");
+  t = t.replace(/^\[[^\]]*GMT[+-]\d+\]\s*/im, "");
+  t = t.replace(/^(Sender|Quoted message|Forwarded|metadata)\s*:\s*[\s\S]*?
+(?=\S)/i, "");
+  return t.trim();
+}
+
 function stripStructuredNoise(text: string): string {
-  let t = String(text || "");
+  let t = stripMessageEnvelope(String(text || ""));
   t = t.replace(/```(?:json)?[\s\S]*?```/gi, " ");
   t = t.replace(/\{\s*"(?:role|type|agent|session|tool|content)"[\s\S]*?\}/gi, " ");
   t = t.replace(/(^|
@@ -84,13 +95,13 @@ function stripStructuredNoise(text: string): string {
 
 function normalizeNaturalText(text: string): string {
   const t = stripStructuredNoise(text)
-    .split('
-')
+    .split("
+")
     .map((line) => line.trim())
     .filter(Boolean)
     .filter((line) => !/^(type|role|agent|session|tool)\s*[:=]/i.test(line))
-    .join('
-');
+    .join("
+");
   return t.trim();
 }
 
@@ -101,40 +112,6 @@ function extractTextBlock(x: any): string {
   if (x.type && x.type !== "text") return "";
   if (typeof x.text === "string") return normalizeNaturalText(x.text);
   return "";
-}
-
-function isMeaningfulQuery(text: string): boolean {
-  const t = String(text || "").trim();
-  if (!t) return false;
-  if (t.length < 4) return false;
-  if (/^(hi|hello|hey|你好|在吗|在？|在吗？|谢谢|thanks|ok|好的|嗯嗯)$/i.test(t)) return false;
-  if (/^[?？!！。.，,\s]+$/.test(t)) return false;
-  return true;
-}
-
-function formatMemoryInjection(chunks: any[]): string {
-  if (!Array.isArray(chunks) || !chunks.length) return "";
-  const lines = chunks.slice(0, 6).map((x: any, i: number) => {
-    let user = "";
-    let assistant = "";
-    try {
-      const p = JSON.parse(String(x.content || '{}'));
-      user = String(p.user || "").trim();
-      assistant = String(p.assistant || "").trim();
-    } catch {}
-    return [
-      `[memory ${i + 1}] kind=${x.memory_kind || 'episodic'} score=${x.final_score ?? x.score ?? 0}`,
-      user ? `user: ${user}` : '',
-      assistant ? `assistant: ${assistant}` : '',
-      Array.isArray(x.tags) && x.tags.length ? `tags: ${x.tags.join(', ')}` : '',
-    ].filter(Boolean).join('
-');
-  });
-  return `Relevant memory from prior conversations:
-
-${lines.join('
-
-')}`;
 }
 
 function contentToText(content: any): string {
