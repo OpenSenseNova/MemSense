@@ -63,20 +63,26 @@ Memsense is built for real agent workloads:
 
 ## Quick Start
 
-### 1) Start backend stack
-
-```bash
-docker compose up -d
-```
-
-### One-click local BGE deployment (auto model pull)
+### 1) One-click bootstrap (recommended)
 
 ```bash
 cp .env.example .env
-bash scripts/start-local-bge.sh
+bash scripts/bootstrap.sh
 ```
 
-> First startup may take longer because the BGE model is downloaded automatically.
+This command will ask you to choose embedding strategy:
+- `openai` (OpenAI-compatible / Qwen embedding API)
+- `local` (local BGE with auto model download)
+
+You can also run non-interactive:
+
+```bash
+bash scripts/bootstrap.sh openai
+# or
+bash scripts/bootstrap.sh local
+```
+
+> Local mode first startup may take longer because the BGE model is downloaded automatically.
 
 ### 2) Install plugin into OpenClaw
 

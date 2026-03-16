@@ -6,7 +6,7 @@ Memsense supports one-click local embedding deployment with automatic model down
 
 ```bash
 cp .env.example .env
-bash scripts/start-local-bge.sh
+bash scripts/bootstrap.sh local
 ```
 
 ## What happens

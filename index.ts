@@ -26,8 +26,17 @@ function ok(data: unknown, traceId: string, degraded = false) {
   };
 }
 
+function withEmbeddingSetupHint(message: string) {
+  const m = String(message || "");
+  const looksLikeEmbeddingConfigError =
+    /MEMSENSE_OPENAI_API_KEY|embedding|bge_http|openai provider|required/i.test(m);
+  if (!looksLikeEmbeddingConfigError) return m;
+
+  return `${m}\n\n[MEMSENSE_SETUP_REQUIRED]\nPlease ask user to choose embedding strategy:\n1) openai-compatible (Qwen/OpenAI API)\n2) local-bge (one-click local model deployment)\n\nQuick start:\n- Interactive: bash scripts/bootstrap.sh\n- OpenAI mode: bash scripts/bootstrap.sh openai\n- Local mode:  bash scripts/bootstrap.sh local`;
+}
+
 function fail(errorCode: string, message: string, traceId: string, degraded = false) {
-  const payload = { ok: false, degraded, trace_id: traceId, error_code: errorCode, message };
+  const payload = { ok: false, degraded, trace_id: traceId, error_code: errorCode, message: withEmbeddingSetupHint(message) };
   return {
     content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }],
     details: payload,
