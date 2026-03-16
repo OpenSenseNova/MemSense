@@ -377,13 +377,13 @@ export default {
     api.registerCli(
       ({ program }) => {
         program
-          .command("memory-os:ping")
-          .description("Ping memory-os-fast plugin")
+          .command("memsense:ping")
+          .description("Ping memsense plugin")
           .action(() => {
-            console.log("memory-os-fast: ok");
+            console.log("memsense: ok");
           });
       },
-      { commands: ["memory-os:ping"] },
+      { commands: ["memsense:ping"] },
     );
   },
 };

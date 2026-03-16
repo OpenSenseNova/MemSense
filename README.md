@@ -1,9 +1,9 @@
-# memory-os-openclaw-plugin
+# memsense
 
 Memory OS plugin scaffold for OpenClaw.
 
 ## What is implemented now
-- Plugin id: `memory-os-fast`
+- Plugin id: `memsense`
 - Tools:
   - v1 aliases: `memory_save`, `memory_search`, `memory_fetch_recent`
   - compatibility: `memory_os_write`, `memory_os_retrieve`, `memory_os_list_recent`, `memory_os_search_by_time`
@@ -15,14 +15,14 @@ Memory OS plugin scaffold for OpenClaw.
 
 ## Local test
 ```bash
-cd memory-os-openclaw-plugin
+cd memsense
 npm test
 ```
 
 ## Install into local OpenClaw (linked dev mode)
 ```bash
-openclaw plugins install -l /Users/yaotiankuo/.openclaw/workspace/memory-os-openclaw-plugin
-openclaw plugins enable memory-os-fast
+openclaw plugins install -l <path-to-memsense>
+openclaw plugins enable memsense
 openclaw gateway restart
 openclaw plugins list
 ```
@@ -32,22 +32,18 @@ openclaw plugins list
 {
   "plugins": {
     "entries": {
-      "memory-os-fast": {
-        "enabled": true,
-        "config": {
-          "enabled": true,
-          "localMode": true,
-          "timeoutMs": 180,
-          "maxTopK": 8
-        }
+      "memsense": {
+        "enabled": true
       }
     },
     "slots": {
-      "memory": "memory-os-fast"
+      "memory": "memsense"
     }
   }
 }
 ```
+
+Runtime backend is configured via environment variables (e.g. `MEMSENSE_API_URL`, `MEMSENSE_DATABASE_URL`).
 
 ## Production migration status
 

@@ -1,12 +1,12 @@
 # OpenClaw Integration Rehearsal (Isolated)
 
-This runbook validates `memory-os-openclaw-plugin` in **link mode** without touching OpenClaw core code.
+This runbook validates `memsense` in **link mode** without touching OpenClaw core code.
 
 ## 0) Preconditions
 
 - OpenClaw CLI installed and working.
 - Plugin source at:
-  - `/Users/yaotiankuo/.openclaw/workspace/memory-os-openclaw-plugin`
+  - `<path-to-memsense>`
 - Optional: `jq` for pretty JSON checks.
 
 ---
@@ -15,13 +15,13 @@ This runbook validates `memory-os-openclaw-plugin` in **link mode** without touc
 
 ```bash
 # from anywhere
-openclaw plugins install -l /Users/yaotiankuo/.openclaw/workspace/memory-os-openclaw-plugin
-openclaw plugins enable memory-os-fast
+openclaw plugins install -l <path-to-memsense>
+openclaw plugins enable memsense
 openclaw gateway restart
 openclaw plugins list
 ```
 
-Expected: `memory-os-fast` appears as enabled.
+Expected: `memsense` appears as enabled.
 
 ---
 
@@ -33,18 +33,12 @@ Edit `~/.openclaw/openclaw.json`:
 {
   "plugins": {
     "entries": {
-      "memory-os-fast": {
-        "enabled": true,
-        "config": {
-          "enabled": true,
-          "localMode": true,
-          "timeoutMs": 180,
-          "maxTopK": 8
-        }
+      "memsense": {
+        "enabled": true
       }
     },
     "slots": {
-      "memory": "memory-os-fast"
+      "memory": "memsense"
     }
   }
 }
@@ -63,7 +57,7 @@ openclaw gateway restart
 From plugin repo:
 
 ```bash
-cd /Users/yaotiankuo/.openclaw/workspace/memory-os-openclaw-plugin
+cd <path-to-memsense>
 bash scripts/rehearsal-smoke.sh
 ```
 
@@ -89,8 +83,8 @@ All checks run against in-memory local engine and leave no persistent external s
 If plugin is linked/enabled, verify CLI registration:
 
 ```bash
-openclaw memory-os:ping
-# expected: memory-os-fast: ok
+openclaw memsense:ping
+# expected: memsense: ok
 ```
 
 ---
@@ -100,15 +94,15 @@ openclaw memory-os:ping
 Disable and unlink plugin:
 
 ```bash
-openclaw plugins disable memory-os-fast
-openclaw plugins remove memory-os-fast
+openclaw plugins disable memsense
+openclaw plugins remove memsense
 openclaw gateway restart
 openclaw plugins list
 ```
 
 If you edited `~/.openclaw/openclaw.json`, remove or revert:
 
-- `plugins.entries.memory-os-fast`
+- `plugins.entries.memsense`
 - `plugins.slots.memory`
 
 ---
@@ -116,6 +110,6 @@ If you edited `~/.openclaw/openclaw.json`, remove or revert:
 ## 6) Fast troubleshooting
 
 - Plugin not listed: rerun install with absolute path and check path exists.
-- Command not found (`memory-os:ping`): plugin not enabled or gateway not restarted.
+- Command not found (`memsense:ping`): plugin not enabled or gateway not restarted.
 - Smoke test fails: run `npm test` first, then rerun `bash scripts/rehearsal-smoke.sh`.
 - Runtime mismatch: ensure OpenClaw version satisfies `peerDependencies.openclaw >=2026.3.1`.
