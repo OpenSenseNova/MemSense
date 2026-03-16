@@ -18,6 +18,10 @@ services:
     environment:
       MEMSENSE_DATABASE_URL: postgresql://memsense:memsense@postgres:5432/memsense
       MEMSENSE_PORT: 8787
+      MEMSENSE_EMBEDDING_PROVIDER: openai
+      MEMSENSE_OPENAI_BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1
+      MEMSENSE_EMBEDDING_MODEL: text-embedding-v4
+      MEMSENSE_OPENAI_API_KEY: ${MEMSENSE_OPENAI_API_KEY:-}
     ports:
       - '8787:8787'
     volumes:

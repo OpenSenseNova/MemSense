@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { query } from './db/client.js';
+import { embedText, toPgVectorLiteral } from './embedding/client.js';
 
 function genMemoryId() {
   return `mem_${crypto.randomBytes(8).toString('hex')}`;
@@ -12,7 +13,7 @@ export async function saveChunk(input) {
   const sql = `INSERT INTO memory_chunks
   (memory_id, tenant_id, scope, session_id, user_id, content, type_hint, tags, task_tag, source, score, confidence, timestamp_ms)
   VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13)
-  RETURNING memory_id, timestamp_ms, score`;
+  RETURNING id, memory_id, timestamp_ms, score`;
   const vals = [
     memoryId,
     input.tenant_id,
@@ -29,11 +30,19 @@ export async function saveChunk(input) {
     timestamp,
   ];
   const r = await query(sql, vals);
+  const row = r.rows[0];
+
+  const embedding = await embedText(String(input.content || ''));
+  await query(
+    `INSERT INTO memory_chunk_embeddings (chunk_id, embedding, model) VALUES ($1, $2::vector, $3)`,
+    [row.id, toPgVectorLiteral(embedding), process.env.MEMSENSE_EMBEDDING_MODEL || process.env.MEMSENSE_BGE_MODEL || 'unknown'],
+  );
+
   await query(
     `INSERT INTO memory_events (memory_id, tenant_id, scope, event_type, payload) VALUES ($1,$2,$3,'capture',$4::jsonb)`,
     [memoryId, input.tenant_id, input.scope, JSON.stringify({ source: input.source || 'session' })],
   );
-  return r.rows[0];
+  return { memory_id: row.memory_id, timestamp_ms: row.timestamp_ms, score: row.score };
 }
 
 export async function fetchRecent({ tenant_id, scope, session_id, user_id, limit = 10 }) {
@@ -51,18 +60,20 @@ export async function fetchRecent({ tenant_id, scope, session_id, user_id, limit
 }
 
 export async function searchChunks({ tenant_id, scope, session_id, user_id, query_text, top_k = 8 }) {
-  // NOTE: 当前使用 PostgreSQL ILIKE 作为第一版检索；向量检索后续接 pgvector。
-  const sql = `SELECT memory_id, content, tags, score, confidence, timestamp_ms, session_id, user_id,
-    (CASE WHEN content ILIKE '%' || $5 || '%' THEN 1 ELSE 0 END) AS lexical_hit
-  FROM memory_chunks
-  WHERE tenant_id = $1
-    AND scope = $2
-    AND ($3::text IS NULL OR session_id = $3)
-    AND ($4::text IS NULL OR user_id = $4)
-    AND status = 'active'
-  ORDER BY lexical_hit DESC, score DESC, timestamp_ms DESC
+  const qvec = await embedText(String(query_text || ''));
+  const qvecLiteral = toPgVectorLiteral(qvec);
+  const sql = `SELECT c.memory_id, c.content, c.tags, c.score, c.confidence, c.timestamp_ms, c.session_id, c.user_id,
+    (1 - (e.embedding <=> $5::vector)) AS vector_score
+  FROM memory_chunks c
+  JOIN memory_chunk_embeddings e ON e.chunk_id = c.id
+  WHERE c.tenant_id = $1
+    AND c.scope = $2
+    AND ($3::text IS NULL OR c.session_id = $3)
+    AND ($4::text IS NULL OR c.user_id = $4)
+    AND c.status = 'active'
+  ORDER BY vector_score DESC, c.score DESC, c.timestamp_ms DESC
   LIMIT $6`;
-  const r = await query(sql, [tenant_id, scope, session_id || null, user_id || null, String(query_text || ''), Number(top_k)]);
+  const r = await query(sql, [tenant_id, scope, session_id || null, user_id || null, qvecLiteral, Number(top_k)]);
   return r.rows;
 }
 

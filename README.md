@@ -58,5 +58,21 @@ openclaw plugins list
 - Added docker-compose for local production-like startup.
 
 ⚠️ Remaining placeholder(s) (explicitly tracked):
-- Search currently uses PostgreSQL lexical match (`ILIKE`) for v1; vector retrieval (`pgvector`) is not wired yet.
 - Dashboard UI is not implemented yet (API/backend foundation is done first).
+
+## Embedding config (production)
+
+Memsense now uses vector retrieval (pgvector). Configure one embedding provider:
+
+### A) OpenAI-compatible (recommended for Qwen embedding)
+- `MEMSENSE_EMBEDDING_PROVIDER=openai`
+- `MEMSENSE_OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1` (or your compatible endpoint)
+- `MEMSENSE_OPENAI_API_KEY=...`
+- `MEMSENSE_EMBEDDING_MODEL=text-embedding-v4`
+
+### B) Local BGE HTTP service
+- `MEMSENSE_EMBEDDING_PROVIDER=bge_http`
+- `MEMSENSE_BGE_ENDPOINT=http://127.0.0.1:8000/embed`
+- `MEMSENSE_BGE_MODEL=bge-large-zh-v1.5`
+
+Both save/search will call the configured embedding provider.
