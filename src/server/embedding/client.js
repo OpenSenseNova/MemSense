@@ -19,8 +19,8 @@ export async function embedText(text) {
 
   if (provider === 'bge_http') {
     const url = cfg.embedding.bgeEndpoint;
-    const json = await postJson(url, { input, model: cfg.embedding.bgeModel });
-    const vec = json?.embedding || json?.data?.[0]?.embedding;
+    const json = await postJson(url, { input, model: cfg.embedding.bgeModel, inputs: [input] });
+    const vec = json?.embedding || json?.data?.[0]?.embedding || (Array.isArray(json) ? json[0] : null);
     if (!Array.isArray(vec)) throw new Error('bge_http invalid embedding response');
     return vec;
   }

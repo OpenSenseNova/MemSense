@@ -69,6 +69,15 @@ Memsense is built for real agent workloads:
 docker compose up -d
 ```
 
+### One-click local BGE deployment (auto model pull)
+
+```bash
+cp .env.example .env
+bash scripts/start-local-bge.sh
+```
+
+> First startup may take longer because the BGE model is downloaded automatically.
+
 ### 2) Install plugin into OpenClaw
 
 ```bash
