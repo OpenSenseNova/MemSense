@@ -1,4 +1,6 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
+
+import { TriggerPipeline } from "./src/trigger/trigger-pipeline.js";
 const MEMSENSE_API_URL = process.env.MEMSENSE_API_URL || "http://127.0.0.1:8787";
 
 async function getSetupStatusHint() {
@@ -60,6 +62,43 @@ function fail(errorCode: string, message: string, traceId: string, degraded = fa
 }
 
 const sessionQaCache = new Map<string, Array<{ user: string; assistant: string; timestamp: number }>>();
+const sessionPendingAutoSave = new Map<string, { user: string; tags: string[]; taskTag?: string | null; source: string }>();
+const sessionInjected = new Set<string>();
+const triggerPipeline = new TriggerPipeline();
+
+function isMeaningfulQuery(text: string): boolean {
+  const t = String(text || "").trim();
+  if (!t) return false;
+  if (t.length < 4) return false;
+  if (/^(hi|hello|hey|你好|在吗|在？|在吗？|谢谢|thanks|ok|好的|嗯嗯)$/i.test(t)) return false;
+  if (/^[?？!！。.，,\s]+$/.test(t)) return false;
+  return true;
+}
+
+function formatMemoryInjection(chunks: any[]): string {
+  if (!Array.isArray(chunks) || !chunks.length) return "";
+  const lines = chunks.slice(0, 6).map((x: any, i: number) => {
+    let user = "";
+    let assistant = "";
+    try {
+      const p = JSON.parse(String(x.content || '{}'));
+      user = String(p.user || "").trim();
+      assistant = String(p.assistant || "").trim();
+    } catch {}
+    return [
+      `[memory ${i + 1}] kind=${x.memory_kind || 'episodic'} score=${x.final_score ?? x.score ?? 0}`,
+      user ? `user: ${user}` : '',
+      assistant ? `assistant: ${assistant}` : '',
+      Array.isArray(x.tags) && x.tags.length ? `tags: ${x.tags.join(', ')}` : '',
+    ].filter(Boolean).join('
+');
+  });
+  return `Relevant memory from prior conversations:
+
+${lines.join('
+
+')}`;
+}
 
 function contentToText(content: any): string {
   if (typeof content === "string") return content;
@@ -133,6 +172,63 @@ export default {
       if (!sid) return;
       const qa = buildQaFromHistory(Array.isArray(event?.historyMessages) ? event.historyMessages : []);
       sessionQaCache.set(String(sid), qa.slice(-40));
+
+      const prompt = String(event?.prompt || "").trim();
+      const decision = triggerPipeline.decide(prompt);
+      if (decision.shouldSave) {
+        sessionPendingAutoSave.set(String(sid), {
+          user: prompt,
+          tags: decision.tags || [],
+          taskTag: decision.tags?.[0] || null,
+          source: decision.source || 'rule',
+        });
+      }
+    });
+
+    api.on("llm_output", async (event: any, ctx: any) => {
+      const sid = ctx?.sessionId || event?.sessionId;
+      if (!sid) return;
+      const pending = sessionPendingAutoSave.get(String(sid));
+      if (!pending) return;
+      try {
+        const assistant = Array.isArray(event?.assistantTexts) ? String(event.assistantTexts[0] || "") : "";
+        await callApi("/v1/memory/save", {
+          tenant_id: "default",
+          scope: "user",
+          session_id: String(sid),
+          content: JSON.stringify({ user: pending.user, assistant }),
+          task_tag: pending.taskTag,
+          tags: pending.tags,
+          type_hint: "qa_chunk",
+          source: pending.source || "rule",
+          timestamp: Date.now(),
+          score: 0.5,
+          confidence: 0.7,
+        });
+      } catch {}
+      sessionPendingAutoSave.delete(String(sid));
+    });
+
+    api.on("before_prompt_build", async (event: any, ctx: any) => {
+      const sid = ctx?.sessionId;
+      if (!sid || sessionInjected.has(String(sid))) return;
+      const prompt = String(event?.prompt || "").trim();
+      if (!isMeaningfulQuery(prompt)) return;
+      try {
+        const result = await callApi("/v1/memory/search", {
+          tenant_id: "default",
+          scope: "user",
+          query: prompt,
+          top_k: 5,
+        });
+        const injection = formatMemoryInjection(result?.chunks || []);
+        sessionInjected.add(String(sid));
+        if (!injection) return;
+        return { prependContext: injection };
+      } catch {
+        sessionInjected.add(String(sid));
+        return;
+      }
     });
 
     // v1 aliases aligned with PRD naming: save/search/fetch_recent
