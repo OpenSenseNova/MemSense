@@ -13,7 +13,8 @@
     "server": "node src/server/index.js",
     "worker": "node src/worker/index.js",
     "tag-worker": "node src/worker/tag-worker.js",
-    "db:migrate": "node scripts/db-migrate.mjs"
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "smoke:api": "node scripts/api-smoke.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

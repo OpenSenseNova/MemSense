@@ -8,5 +8,6 @@ This repository keeps only lightweight public-facing docs:
 - `features/worker-retry-dlq.md`
 - `features/local-bge-oneclick.md`
 - `features/no-docker-quickstart.md`
+- `features/api-smoke-test.md`
 
 Detailed internal engineering notes are maintained in Obsidian.
