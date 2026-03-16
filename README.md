@@ -90,6 +90,33 @@ For **no-docker mode**, the bootstrap script will automatically normalize `.env`
 
 > Local mode first startup may take longer because the BGE model is downloaded automatically.
 
+### Optional: run as persistent macOS services (launchd)
+
+For no-docker deployments on macOS, you can install persistent user services:
+
+```bash
+bash scripts/install-launchd.sh
+```
+
+This installs and loads three LaunchAgents:
+- `local.memsense.bge`
+- `local.memsense.server`
+- `local.memsense.worker`
+
+Logs are written to:
+- `.runtime/launchd-bge.out.log`
+- `.runtime/launchd-bge.err.log`
+- `.runtime/launchd-server.out.log`
+- `.runtime/launchd-server.err.log`
+- `.runtime/launchd-worker.out.log`
+- `.runtime/launchd-worker.err.log`
+
+To uninstall them later:
+
+```bash
+bash scripts/uninstall-launchd.sh
+```
+
 ### 2) Install plugin into OpenClaw
 
 ```bash
