@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { query } from './db/client.js';
 import { embedText, toPgVectorLiteral } from './embedding/client.js';
+import { hybridRerank } from './retrieval/rerank.js';
 
 function genMemoryId() {
   return `mem_${crypto.randomBytes(8).toString('hex')}`;
@@ -60,10 +61,12 @@ export async function fetchRecent({ tenant_id, scope, session_id, user_id, limit
 }
 
 export async function searchChunks({ tenant_id, scope, session_id, user_id, query_text, top_k = 8 }) {
-  const qvec = await embedText(String(query_text || ''));
+  const q = String(query_text || '');
+  const qvec = await embedText(q);
   const qvecLiteral = toPgVectorLiteral(qvec);
   const sql = `SELECT c.memory_id, c.content, c.tags, c.score, c.confidence, c.timestamp_ms, c.session_id, c.user_id,
-    (1 - (e.embedding <=> $5::vector)) AS vector_score
+    (1 - (e.embedding <=> $5::vector)) AS vector_score,
+    (CASE WHEN c.content ILIKE '%' || $6 || '%' THEN 1 ELSE 0 END) AS lexical_score
   FROM memory_chunks c
   JOIN memory_chunk_embeddings e ON e.chunk_id = c.id
   WHERE c.tenant_id = $1
@@ -72,9 +75,9 @@ export async function searchChunks({ tenant_id, scope, session_id, user_id, quer
     AND ($4::text IS NULL OR c.user_id = $4)
     AND c.status = 'active'
   ORDER BY vector_score DESC, c.score DESC, c.timestamp_ms DESC
-  LIMIT $6`;
-  const r = await query(sql, [tenant_id, scope, session_id || null, user_id || null, qvecLiteral, Number(top_k)]);
-  return r.rows;
+  LIMIT $7`;
+  const r = await query(sql, [tenant_id, scope, session_id || null, user_id || null, qvecLiteral, q, Number(Math.max(top_k * 3, top_k))]);
+  return hybridRerank(r.rows, Number(top_k));
 }
 
 export async function searchByTime({ tenant_id, scope, from_ts, to_ts, limit = 20, field = 'updated_at' }) {

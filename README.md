@@ -88,3 +88,10 @@ Memsense now uses vector retrieval (pgvector). Configure one embedding provider:
 - `MEMSENSE_BGE_MODEL=bge-large-zh-v1.5`
 
 Both save/search will call the configured embedding provider.
+
+## Retrieval strategy (current)
+
+- Vector recall with pgvector
+- Lexical signal (`ILIKE`) for keyword boost
+- Hybrid rerank (vector + lexical + memory_score + confidence)
+- Returned results include `final_score` and `explain` fields for observability
