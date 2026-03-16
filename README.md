@@ -137,10 +137,28 @@ Memsense supports two modes:
 
 ---
 
+## Enter Dashboard
+
+After startup, open:
+
+- `http://127.0.0.1:8787/dashboard?token=<your_token>`
+
+If you expose a different port/host, replace accordingly.
+
+Token is configured by:
+
+- `MEMSENSE_DASHBOARD_TOKENS_JSON={"token_viewer":"viewer","token_ops":"operator","token_admin":"admin"}`
+
+Examples:
+
+- Viewer access: `http://127.0.0.1:8787/dashboard?token=token_viewer`
+- Operator access: `http://127.0.0.1:8787/dashboard?token=token_ops`
+
+---
+
 ## Security & Operations
 
-- Dashboard RBAC via:
-  - `MEMSENSE_DASHBOARD_TOKENS_JSON={"token_viewer":"viewer","token_ops":"operator","token_admin":"admin"}`
+- Dashboard RBAC via token roles (`viewer` / `operator` / `admin`)
 - Worker resilience:
   - queue claim with lock
   - exponential retry
