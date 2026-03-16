@@ -7,6 +7,21 @@ function genMemoryId() {
   return `mem_${crypto.randomBytes(8).toString('hex')}`;
 }
 
+function normalizeQaChunkContent(raw) {
+  let parsed;
+  try {
+    parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch {
+    throw new Error('memory_save only accepts qa_chunk content (json)');
+  }
+  const user = String(parsed?.user || '').trim();
+  const assistant = String(parsed?.assistant || '').trim();
+  if (!user || !assistant) {
+    throw new Error('memory_save requires both user_text and assistant_text');
+  }
+  return JSON.stringify({ user, assistant });
+}
+
 export async function saveChunk(input) {
   const timestamp = Number(input.timestamp ?? Date.now());
   const memoryId = genMemoryId();
@@ -15,19 +30,20 @@ export async function saveChunk(input) {
   (memory_id, tenant_id, scope, session_id, user_id, content, type_hint, tags, task_tag, source, score, confidence, timestamp_ms)
   VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13)
   RETURNING id, memory_id, timestamp_ms, score`;
+  const qaContent = normalizeQaChunkContent(input.content);
   const vals = [
     memoryId,
     input.tenant_id,
     input.scope,
     input.session_id || null,
     input.user_id || null,
-    String(input.content || '').trim(),
-    input.type_hint || 'qa_chunk',
+    qaContent,
+    'qa_chunk',
     tags,
     input.task_tag || null,
-    input.source || 'session',
-    Number(input.score ?? 0.5),
-    Number(input.confidence ?? 0.7),
+    'session',
+    0.5,
+    0.7,
     timestamp,
   ];
   const r = await query(sql, vals);
@@ -35,7 +51,7 @@ export async function saveChunk(input) {
 
   await query(
     `INSERT INTO embedding_jobs (chunk_id, payload, status) VALUES ($1, $2::jsonb, 'pending')`,
-    [row.id, JSON.stringify({ content: String(input.content || '') })],
+    [row.id, JSON.stringify({ content: qaContent })],
   );
 
   await query(

@@ -67,17 +67,13 @@ const WriteSchema = {
     scope: { type: "string", enum: ["user", "team", "org", "task"] },
     session_id: { type: "string" },
     user_id: { type: "string" },
-    content: { type: "string" },
-    type_hint: { type: "string" },
-    source: { type: "string" },
+    user_text: { type: "string" },
+    assistant_text: { type: "string" },
     task_tag: { type: "string" },
     tags: { type: "array", items: { type: "string" }, maxItems: 20 },
     timestamp: { type: "integer", minimum: 0 },
-    score: { type: "number", minimum: 0, maximum: 1 },
-    mode: { type: "string", enum: ["write_through", "write_back"] },
-    confidence: { type: "number", minimum: 0, maximum: 1 },
   },
-  required: ["tenant_id", "scope", "content"],
+  required: ["tenant_id", "scope", "user_text", "assistant_text"],
 };
 
 const RetrieveSchema = {
@@ -104,25 +100,28 @@ export default {
     api.registerTool({
       name: "memory_save",
       label: "Memory Save",
-      description: "Save one memory chunk",
+      description: "Save one QA chunk from conversation history (one user + one assistant turn)",
       parameters: WriteSchema,
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("save");
         try {
+          const content = JSON.stringify({
+            user: String(params.user_text || "").trim(),
+            assistant: String(params.assistant_text || "").trim(),
+          });
           const saved = await callApi("/v1/memory/save", {
             tenant_id: params.tenant_id,
             scope: params.scope,
             session_id: params.session_id,
             user_id: params.user_id,
-            content: params.content,
-            type_hint: params.type_hint,
-            source: params.source,
+            content,
+            type_hint: "qa_chunk",
+            source: "session",
             task_tag: params.task_tag,
             tags: params.tags,
             timestamp: params.timestamp,
-            score: params.score,
-            mode: params.mode,
-            confidence: params.confidence,
+            score: 0.5,
+            confidence: 0.7,
           });
           return ok(saved, traceId);
         } catch (e: any) {
