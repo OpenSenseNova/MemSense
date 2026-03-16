@@ -1,6 +1,21 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 const MEMSENSE_API_URL = process.env.MEMSENSE_API_URL || "http://127.0.0.1:8787";
 
+async function getSetupStatusHint() {
+  try {
+    const res = await fetch(`${MEMSENSE_API_URL}/v1/system/setup-status`);
+    const json = await res.json();
+    if (!res.ok || !json?.ok) return "";
+    const d = json.data || {};
+    if (d.ok) return "";
+    const checks = (d.checks || []).map((c: any) => `- ${c.key}: ${c.message}`).join("\n");
+    const steps = (d.next_steps || []).map((s: string) => `- ${s}`).join("\n");
+    return `\n\n[MEMSENSE_SETUP_STATUS]\nprovider=${d.provider}\n${checks}\n${steps}`;
+  } catch {
+    return "";
+  }
+}
+
 async function callApi(path: string, body: unknown) {
   const res = await fetch(`${MEMSENSE_API_URL}${path}`, {
     method: "POST",
@@ -9,7 +24,8 @@ async function callApi(path: string, body: unknown) {
   });
   const json = await res.json();
   if (!res.ok || !json?.ok) {
-    throw new Error(json?.error || `api failed: ${res.status}`);
+    const hint = await getSetupStatusHint();
+    throw new Error((json?.error || `api failed: ${res.status}`) + hint);
   }
   return json.data;
 }

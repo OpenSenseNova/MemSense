@@ -14,6 +14,7 @@ import {
   setChunkStatus,
 } from './service.js';
 import { createAuth } from './auth.js';
+import { buildSetupStatus } from './system-status.js';
 
 export function createApp() {
   const app = express();
@@ -24,6 +25,10 @@ export function createApp() {
 
   app.get('/healthz', (_req, res) => {
     res.json({ ok: true });
+  });
+
+  app.get('/v1/system/setup-status', (_req, res) => {
+    res.json({ ok: true, data: buildSetupStatus(process.env) });
   });
 
   app.post('/v1/memory/save', async (req, res) => {
