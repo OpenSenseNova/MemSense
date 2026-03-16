@@ -1,0 +1,15 @@
+{
+  "id": "memory-os-fast",
+  "kind": "memory",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "localMode": { "type": "boolean", "default": true },
+      "serviceUrl": { "type": "string" },
+      "timeoutMs": { "type": "integer", "minimum": 50, "default": 180 },
+      "maxTopK": { "type": "integer", "minimum": 1, "maximum": 20, "default": 8 }
+    }
+  }
+}

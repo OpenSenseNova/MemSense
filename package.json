@@ -1,0 +1,19 @@
+{
+  "name": "memory-os-openclaw-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Memory OS plugin for OpenClaw (fast lane + async lifecycle stubs)",
+  "peerDependencies": {
+    "openclaw": ">=2026.3.1"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "rehearsal:smoke": "bash scripts/rehearsal-smoke.sh"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
