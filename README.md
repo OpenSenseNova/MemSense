@@ -36,7 +36,7 @@ Memsense is built for real agent workloads:
 
 - OpenClaw plugin id: `memsense`
 - Exposed tools:
-  - `memory_save` (QA-only; captures latest session history with optional `k`, default 5; model does not pass session_id)
+  - `memory_save` (QA-only; captures latest session history with optional `k`, default 5; model does not pass session_id; structured metadata is cleaned before ingest)
   - `memory_search`
   - `memory_fetch_recent`
 

@@ -66,6 +66,43 @@ const sessionPendingAutoSave = new Map<string, { user: string; tags: string[]; t
 const sessionInjected = new Set<string>();
 const triggerPipeline = new TriggerPipeline();
 
+function stripStructuredNoise(text: string): string {
+  let t = String(text || "");
+  t = t.replace(/```(?:json)?[\s\S]*?```/gi, " ");
+  t = t.replace(/\{\s*"(?:role|type|agent|session|tool|content)"[\s\S]*?\}/gi, " ");
+  t = t.replace(/(^|
+)\s*(agent|session|tool|role|run_id|session_id|agent_id)\s*:\s.*$/gim, " ");
+  t = t.replace(/(session_id|agent_id|run_id|tool_name)\s*=\s*[^\s]+/gi, " ");
+  t = t.replace(/<\/?[a-z][^>]*>/gi, " ");
+  t = t.replace(/[ 	]+/g, " ");
+  t = t.replace(/
+{3,}/g, "
+
+");
+  return t.trim();
+}
+
+function normalizeNaturalText(text: string): string {
+  const t = stripStructuredNoise(text)
+    .split('
+')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !/^(type|role|agent|session|tool)\s*[:=]/i.test(line))
+    .join('
+');
+  return t.trim();
+}
+
+function extractTextBlock(x: any): string {
+  if (!x) return "";
+  if (typeof x === "string") return normalizeNaturalText(x);
+  if (typeof x !== "object") return "";
+  if (x.type && x.type !== "text") return "";
+  if (typeof x.text === "string") return normalizeNaturalText(x.text);
+  return "";
+}
+
 function isMeaningfulQuery(text: string): boolean {
   const t = String(text || "").trim();
   if (!t) return false;
@@ -101,19 +138,11 @@ ${lines.join('
 }
 
 function contentToText(content: any): string {
-  if (typeof content === "string") return content;
+  if (typeof content === "string") return normalizeNaturalText(content);
   if (Array.isArray(content)) {
-    return content
-      .map((x) => {
-        if (!x) return "";
-        if (typeof x === "string") return x;
-        if (typeof x?.text === "string") return x.text;
-        return "";
-      })
-      .join(" ")
-      .trim();
+    return content.map((x) => extractTextBlock(x)).filter(Boolean).join(" ").trim();
   }
-  if (typeof content?.text === "string") return content.text;
+  if (typeof content?.text === "string") return normalizeNaturalText(content.text);
   return "";
 }
 
@@ -173,7 +202,7 @@ export default {
       const qa = buildQaFromHistory(Array.isArray(event?.historyMessages) ? event.historyMessages : []);
       sessionQaCache.set(String(sid), qa.slice(-40));
 
-      const prompt = String(event?.prompt || "").trim();
+      const prompt = normalizeNaturalText(String(event?.prompt || ""));
       const decision = triggerPipeline.decide(prompt);
       if (decision.shouldSave) {
         sessionPendingAutoSave.set(String(sid), {
@@ -191,7 +220,7 @@ export default {
       const pending = sessionPendingAutoSave.get(String(sid));
       if (!pending) return;
       try {
-        const assistant = Array.isArray(event?.assistantTexts) ? String(event.assistantTexts[0] || "") : "";
+        const assistant = Array.isArray(event?.assistantTexts) ? normalizeNaturalText(String(event.assistantTexts[0] || "")) : "";
         await callApi("/v1/memory/save", {
           tenant_id: "default",
           scope: "user",
@@ -212,7 +241,7 @@ export default {
     api.on("before_prompt_build", async (event: any, ctx: any) => {
       const sid = ctx?.sessionId;
       if (!sid || sessionInjected.has(String(sid))) return;
-      const prompt = String(event?.prompt || "").trim();
+      const prompt = normalizeNaturalText(String(event?.prompt || ""));
       if (!isMeaningfulQuery(prompt)) return;
       try {
         const result = await callApi("/v1/memory/search", {
