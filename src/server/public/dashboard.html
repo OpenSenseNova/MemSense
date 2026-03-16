@@ -113,6 +113,9 @@
     .tag { display:inline-flex; padding:4px 8px; border-radius:999px; background:#233056; border:1px solid var(--line); }
     .memory-footer { display:flex; justify-content:flex-end; margin-top: 12px; }
     .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .playground-grid { display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-top: 12px; }
+    .result-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; white-space: pre-wrap; word-break: break-word; max-height: 420px; overflow: auto; }
+    .section-title { font-weight: 700; }
     .empty { color: var(--muted); text-align:center; padding: 18px 10px; }
     .toggle { color: var(--muted); display:flex; align-items:center; gap:8px; }
     @media (max-width: 960px) {
@@ -161,6 +164,38 @@
     <div class="card search-card">
       <div class="search-row" style="margin-bottom:8px"><strong>Async Pipeline Status</strong><span class="hint">后端声明 sections，前端按 metrics 自动渲染</span></div>
       <div id="pipelineStatus" class="pipeline-grid"></div>
+    </div>
+
+    <div class="card search-card">
+      <div class="search-row" style="margin-bottom:8px"><strong>Tool Playground</strong><span class="hint">恢复 dashboard 内直接验证 memory_search / memory_fetch_recent</span></div>
+      <div class="playground-grid">
+        <div class="card">
+          <div class="section-title">memory_search</div>
+          <div class="search-row" style="margin-top:10px">
+            <input id="toolTenant" class="search-input" placeholder="tenant_id" value="default" />
+            <input id="toolScope" class="search-input" placeholder="scope" value="user" />
+          </div>
+          <div class="search-row" style="margin-top:10px">
+            <input id="toolQuery" class="search-input" placeholder="query" value="苹果" />
+            <div class="limit">top_k <input id="toolTopK" type="number" min="1" max="20" value="8" /></div>
+          </div>
+          <div class="search-row" style="margin-top:10px">
+            <button class="btn" onclick="runToolSearch()">Run memory_search</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-title">memory_fetch_recent</div>
+          <div class="search-row" style="margin-top:10px">
+            <input id="toolRecentTenant" class="search-input" placeholder="tenant_id" value="default" />
+            <input id="toolRecentScope" class="search-input" placeholder="scope" value="user" />
+          </div>
+          <div class="search-row" style="margin-top:10px">
+            <div class="limit">limit <input id="toolRecentLimit" type="number" min="1" max="100" value="10" /></div>
+            <button class="btn secondary" onclick="runToolFetchRecent()">Run memory_fetch_recent</button>
+          </div>
+        </div>
+      </div>
+      <div id="toolResult" class="result-box" style="margin-top:12px">Tool result will appear here.</div>
     </div>
 
     <div id="rows" class="list"></div>
@@ -284,6 +319,41 @@
           .join('');
         return `<div class="pipeline-item"><div class="pipeline-title">${escapeHtml(section.label || section.key)}</div>${metrics}</div>`;
       }).join('');
+    }
+
+    function setToolResult(data) {
+      byId('toolResult').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    async function runToolSearch() {
+      try {
+        const payload = {
+          tenant_id: byId('toolTenant').value || 'default',
+          scope: byId('toolScope').value || 'user',
+          query: byId('toolQuery').value || '',
+          top_k: Number(byId('toolTopK').value || 8),
+        };
+        const r = await fetch('/v1/memory/search', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
+        const j = await r.json();
+        setToolResult(j);
+      } catch (e) {
+        setToolResult(String(e?.message || e));
+      }
+    }
+
+    async function runToolFetchRecent() {
+      try {
+        const payload = {
+          tenant_id: byId('toolRecentTenant').value || 'default',
+          scope: byId('toolRecentScope').value || 'user',
+          limit: Number(byId('toolRecentLimit').value || 10),
+        };
+        const r = await fetch('/v1/memory/fetch_recent', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
+        const j = await r.json();
+        setToolResult(j);
+      } catch (e) {
+        setToolResult(String(e?.message || e));
+      }
     }
 
     async function loadContract() {
