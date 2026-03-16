@@ -1,6 +1,7 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 
 import { TriggerPipeline } from "./src/trigger/trigger-pipeline.js";
+import { buildQaFromHistory, normalizeNaturalText, pickFinalAssistantText } from "./src/capture/message-normalize.js";
 const MEMSENSE_API_URL = process.env.MEMSENSE_API_URL || "http://127.0.0.1:8787";
 
 async function getSetupStatusHint() {
@@ -197,7 +198,7 @@ export default {
       const pending = sessionPendingAutoSave.get(String(sid));
       if (!pending) return;
       try {
-        const assistant = Array.isArray(event?.assistantTexts) ? normalizeNaturalText(String(event.assistantTexts[0] || "")) : "";
+        const assistant = pickFinalAssistantText(Array.isArray(event?.assistantTexts) ? event.assistantTexts : []);
         await callApi("/v1/memory/save", {
           tenant_id: "default",
           scope: "user",
