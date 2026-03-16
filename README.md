@@ -35,19 +35,10 @@ Memsense is built for real agent workloads:
 ## Core Capabilities
 
 - OpenClaw plugin id: `memsense`
-- Tool aliases:
+- Exposed tools:
   - `memory_save`
   - `memory_search`
   - `memory_fetch_recent`
-- Compatibility tools:
-  - `memory_os_write`
-  - `memory_os_retrieve`
-  - `memory_os_list_recent`
-  - `memory_os_search_by_time`
-  - `memory_os_feedback`
-  - `memory_os_promote_demote`
-  - `memory_os_forget`
-  - `memory_os_audit`
 
 ---
 
