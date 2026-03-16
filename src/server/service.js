@@ -229,6 +229,26 @@ export async function audit({ memory_id }) {
   return { events: r.rows };
 }
 
+function toDashboardMemoryRow(row) {
+  return {
+    memory_id: row.memory_id,
+    content: row.content,
+    status: row.status,
+    timestamp_ms: row.timestamp_ms,
+    meta: {
+      memory_kind: row.memory_kind || 'episodic',
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      source: row.source || '—',
+      tenant_id: row.tenant_id || '—',
+      scope: row.scope || '—',
+      user_id: row.user_id || null,
+      session_id: row.session_id || null,
+      score: row.score,
+      confidence: row.confidence,
+    },
+  };
+}
+
 export async function dashboardOverview({ q, limit = 20 }) {
   const queryText = String(q || '').trim();
   const search = queryText ? `%${queryText}%` : null;
@@ -241,7 +261,6 @@ export async function dashboardOverview({ q, limit = 20 }) {
     OR COALESCE(session_id, '') ILIKE $1
     OR COALESCE(user_id, '') ILIKE $1
     OR content ILIKE $1
-    OR COALESCE(type_hint, '') ILIKE $1
     OR COALESCE(memory_kind, '') ILIKE $1
     OR COALESCE(source, '') ILIKE $1
     OR COALESCE(tags::text, '') ILIKE $1
@@ -252,18 +271,20 @@ export async function dashboardOverview({ q, limit = 20 }) {
   const activeQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'active'`, [search]);
   const deletedQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'deleted'`, [search]);
   const latestQ = await query(
-    `SELECT memory_id, tenant_id, scope, session_id, user_id, content, type_hint, memory_kind, tags, score, confidence, source, timestamp_ms, status
+    `SELECT memory_id, tenant_id, scope, session_id, user_id, content, memory_kind, tags, score, confidence, source, timestamp_ms, status
      FROM memory_chunks ${where}
      ORDER BY timestamp_ms DESC LIMIT $2`,
     args,
   );
+  const latest = latestQ.rows.map(toDashboardMemoryRow);
   return {
     counts: {
       total: totalQ.rows[0]?.n || 0,
       active: activeQ.rows[0]?.n || 0,
       deleted: deletedQ.rows[0]?.n || 0,
+      showing: latest.filter((x) => x.status !== 'deleted').length,
     },
-    latest: latestQ.rows,
+    latest,
   };
 }
 
@@ -296,16 +317,34 @@ export async function pipelineStatus() {
   const vectorReadyRate = totalChunks ? Number((embeddedChunks / totalChunks).toFixed(4)) : 0;
 
   return {
-    chunks: { total: totalChunks, embedded: embeddedChunks, vector_ready_rate: vectorReadyRate },
-    embedding_jobs: {
-      pending: embPendingQ.rows[0]?.n || 0,
-      running: embRunningQ.rows[0]?.n || 0,
-      failed: embFailedQ.rows[0]?.n || 0,
-    },
-    tag_jobs: {
-      pending: tagPendingQ.rows[0]?.n || 0,
-      running: tagRunningQ.rows[0]?.n || 0,
-      failed: tagFailedQ.rows[0]?.n || 0,
-    },
+    sections: [
+      {
+        key: 'chunks',
+        label: 'Chunks',
+        metrics: {
+          total: totalChunks,
+          embedded: embeddedChunks,
+          vector_ready_rate: vectorReadyRate,
+        },
+      },
+      {
+        key: 'embedding_jobs',
+        label: 'Embedding Jobs',
+        metrics: {
+          pending: embPendingQ.rows[0]?.n || 0,
+          running: embRunningQ.rows[0]?.n || 0,
+          failed: embFailedQ.rows[0]?.n || 0,
+        },
+      },
+      {
+        key: 'tag_jobs',
+        label: 'Tag Jobs',
+        metrics: {
+          pending: tagPendingQ.rows[0]?.n || 0,
+          running: tagRunningQ.rows[0]?.n || 0,
+          failed: tagFailedQ.rows[0]?.n || 0,
+        },
+      },
+    ],
   };
 }

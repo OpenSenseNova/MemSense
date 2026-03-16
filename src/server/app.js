@@ -16,6 +16,7 @@ import {
 } from './service.js';
 import { createAuth } from './auth.js';
 import { buildSetupStatus } from './system-status.js';
+import { getDashboardContract } from './dashboard-contract.js';
 
 export function createApp() {
   const app = express();
@@ -110,6 +111,10 @@ export function createApp() {
     } catch (e) {
       res.status(500).json({ ok: false, error: String(e?.message || e) });
     }
+  });
+
+  app.get('/v1/dashboard/contract', requireRole('viewer'), (_req, res) => {
+    res.json({ ok: true, data: getDashboardContract() });
   });
 
   app.post('/v1/dashboard/overview', requireRole('viewer'), async (req, res) => {

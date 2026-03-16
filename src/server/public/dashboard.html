@@ -1,64 +1,130 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Memsense Dashboard</title>
   <style>
-    :root{
-      --bg:#0b1020; --panel:#121933; --panel-2:#182142; --text:#eef2ff; --muted:#97a3cf;
-      --line:#283463; --accent:#7c9cff; --accent-2:#8ef0c7; --danger:#ff8f8f; --tag:#23315f;
+    :root {
+      --bg: #0b1020;
+      --panel: #121933;
+      --panel-2: #182246;
+      --text: #edf2ff;
+      --muted: #9fb0d9;
+      --line: #2a3668;
+      --accent: #78a8ff;
+      --danger: #ff7f9f;
+      --ok: #54d2a0;
+      --archived: #f0b267;
+      --deleted: #9aa4c8;
+      --shadow: 0 10px 28px rgba(0,0,0,.28);
     }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#0a0f1d,#101733 35%,#0c1226);color:var(--text);padding:18px;font-size:14px}
-    .shell{max-width:1480px;margin:0 auto}
-    .hero{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;margin-bottom:12px}
-    .title{font-size:24px;font-weight:780;letter-spacing:.2px;margin:0}
-    .subtitle{margin-top:4px;color:var(--muted);font-size:12px}
-    .card{background:rgba(18,25,51,.9);border:1px solid rgba(124,156,255,.16);border-radius:14px}
-    .search-card{padding:12px;margin-bottom:12px}
-    .search-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .search-input,.limit input{background:#0b1228;border:1px solid var(--line);color:var(--text);border-radius:10px;outline:none}
-    .search-input{flex:1;min-width:280px;padding:11px 12px;font-size:14px}
-    .search-input:focus,.limit input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,156,255,.12)}
-    .btn,.mini-btn{border:none;border-radius:10px;font-weight:700;cursor:pointer}
-    .btn{padding:11px 13px;background:var(--accent);color:#081022}
-    .btn.secondary{background:#1f2a57;color:#dce6ff}
-    .meta-row{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
-    .toggle,.limit,.hint{color:var(--muted);font-size:12px}
-    .limit{display:flex;gap:6px;align-items:center}
-    .limit input{width:74px;padding:8px 9px}
-    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
-    .kpi{padding:10px 12px}
-    .kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-    .kpi-value{margin-top:4px;font-size:22px;font-weight:800;line-height:1.1}
-    .list{display:flex;flex-direction:column;gap:8px}
-    .memory-card{padding:10px 12px}
-    .memory-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-    .memory-id{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#aab7e8;word-break:break-all}
-    .status{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid}
-    .status.active{background:rgba(142,240,199,.10);border-color:rgba(142,240,199,.28);color:var(--accent-2)}
-    .status.archived{background:rgba(255,214,102,.10);border-color:rgba(255,214,102,.28);color:#ffd666}
-    .status.deleted{background:rgba(255,143,143,.10);border-color:rgba(255,143,143,.28);color:var(--danger)}
-    .content{margin-top:6px;font-size:14px;line-height:1.45;white-space:pre-wrap;color:#f6f8ff}
-    .content-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
-    .bubble{background:#0b1228;border:1px solid var(--line);border-radius:10px;padding:8px}
-    .bubble-label{font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em}
-    .compact-line{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:7px;color:var(--muted);font-size:12px;line-height:1.4}
-    .sep{opacity:.35}
-    .tags{display:inline-flex;gap:6px;flex-wrap:wrap}
-    .tag{background:var(--tag);border:1px solid #3a4e95;color:#dfe7ff;border-radius:999px;padding:2px 8px;font-size:11px}
-    .memory-footer{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(124,156,255,.12)}
-    .scores{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px}
-    .score-pill{background:#0b1228;border:1px solid var(--line);padding:5px 8px;border-radius:8px}
-    .actions{display:flex;gap:6px;flex-wrap:wrap}
-    .mini-btn{padding:6px 8px;font-size:11px}
-    .mini-btn.secondary{background:#24315f;color:#dce6ff}
-    .mini-btn.danger{background:#5f2631;color:#ffd9de}
-    .empty,.error{padding:12px;border-radius:12px}
-    .empty{color:var(--muted);background:rgba(18,25,51,.65);border:1px dashed var(--line);text-align:center}
-    .error{margin-bottom:10px;background:rgba(95,38,49,.45);border:1px solid rgba(255,143,143,.25);color:#ffd7dd;white-space:pre-wrap}
-    @media (max-width: 980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.content-pair{grid-template-columns:1fr}}
-    @media (max-width: 640px){body{padding:12px}.hero{flex-direction:column;align-items:flex-start}.kpis{grid-template-columns:1fr}.search-row{flex-direction:column;align-items:stretch}}
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #0b1020 0%, #0f1530 100%);
+      color: var(--text);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 24px;
+    }
+    .shell { max-width: 1280px; margin: 0 auto; }
+    .hero { display:flex; justify-content:space-between; gap:16px; align-items:flex-end; margin-bottom:18px; }
+    .title { font-size: 28px; font-weight: 700; margin:0; }
+    .subtitle { color: var(--muted); margin-top: 6px; }
+    .hint { color: var(--muted); }
+    .card {
+      background: rgba(18,25,51,.96);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .search-card { margin-bottom: 16px; }
+    .search-row, .meta-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .meta-row { margin-top: 12px; justify-content: space-between; }
+    .search-input, input[type="number"] {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      min-height: 40px;
+    }
+    .search-input { flex: 1 1 340px; }
+    .limit { display:flex; align-items:center; gap:8px; color: var(--muted); }
+    input[type="number"] { width: 86px; }
+    .btn, .mini-btn {
+      border: 1px solid var(--line);
+      background: #24418b;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      padding: 10px 14px;
+      font-weight: 600;
+    }
+    .btn.secondary, .mini-btn.secondary { background: #24335f; }
+    .mini-btn.danger { background: #5a2438; }
+    .error {
+      background: rgba(122, 28, 53, .28);
+      border: 1px solid rgba(255, 127, 159, .42);
+      color: #ffd6df;
+      padding: 12px 14px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+    .kpis {
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .kpi-value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+    .pipeline-grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .pipeline-item { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .pipeline-title { font-weight: 700; margin-bottom: 8px; }
+    .pipeline-metric { display:flex; justify-content:space-between; gap:10px; color: var(--muted); padding: 3px 0; }
+    .list { display:grid; gap: 14px; margin-top: 16px; }
+    .memory-card { padding: 16px; }
+    .memory-top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom: 12px; }
+    .memory-id { font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+    .status {
+      padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+      border: 1px solid transparent;
+    }
+    .status.active { background: rgba(84,210,160,.16); color: var(--ok); border-color: rgba(84,210,160,.35); }
+    .status.archived { background: rgba(240,178,103,.15); color: var(--archived); border-color: rgba(240,178,103,.35); }
+    .status.deleted { background: rgba(154,164,200,.15); color: var(--deleted); border-color: rgba(154,164,200,.35); }
+    .content { background: var(--panel-2); border-radius: 12px; border: 1px solid var(--line); padding: 12px; white-space: pre-wrap; word-break: break-word; }
+    .content-pair { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; }
+    .bubble { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-height: 100%; }
+    .bubble-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+    .meta-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; }
+    .meta-item { background: rgba(24,34,70,.75); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 72px; }
+    .meta-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+    .meta-value { word-break: break-word; }
+    .badge { display:inline-flex; align-items:center; gap:6px; border-radius: 999px; border: 1px solid var(--line); padding: 4px 9px; background: rgba(36,51,95,.85); }
+    .tags { display:flex; gap:6px; flex-wrap:wrap; }
+    .tag { display:inline-flex; padding:4px 8px; border-radius:999px; background:#233056; border:1px solid var(--line); }
+    .memory-footer { display:flex; justify-content:flex-end; margin-top: 12px; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .empty { color: var(--muted); text-align:center; padding: 18px 10px; }
+    .toggle { color: var(--muted); display:flex; align-items:center; gap:8px; }
+    @media (max-width: 960px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .content-pair { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      body { padding: 12px; }
+      .hero { flex-direction: column; align-items: flex-start; }
+      .kpis { grid-template-columns: 1fr; }
+      .search-row, .meta-row { flex-direction: column; align-items: stretch; }
+    }
   </style>
 </head>
 <body>
@@ -66,15 +132,15 @@
     <div class="hero">
       <div>
         <h1 class="title">Memsense Dashboard</h1>
-        <div class="subtitle">单框模糊搜索：content / ID / tags / user / source / scope / status</div>
+        <div class="subtitle">后端驱动字段展示 · 默认按最新时间倒序</div>
       </div>
-      <div class="hint">按最新时间倒序</div>
+      <div class="hint">token 走 query/localStorage；搜索默认留空</div>
     </div>
 
     <div class="card search-card">
       <div class="search-row">
-        <input id="q" class="search-input" placeholder="搜索 memory 内容、ID、tag、user、source、scope、status…" value="demo" />
-        <button class="btn" onclick="load()">搜索</button>
+        <input id="q" class="search-input" placeholder="搜索 memory 内容、ID、tag、user、source、scope、status…" value="" />
+        <button class="btn" onclick="loadAll()">搜索</button>
         <button class="btn secondary" onclick="resetSearch()">清空</button>
       </div>
       <div class="meta-row">
@@ -83,39 +149,18 @@
       </div>
     </div>
 
-    <div class="card search-card">
-      <div class="search-row" style="margin-bottom:8px">
-        <strong>Tool Playground (Real API)</strong>
-        <span class="hint">直接调用与模型相同接口：/v1/memory/search 与 /v1/memory/fetch_recent</span>
-      </div>
-      <div class="search-row" style="margin-bottom:8px">
-        <input id="toolTenant" class="search-input" placeholder="tenant_id (default)" value="default" />
-        <input id="toolScope" class="search-input" placeholder="scope (user/team/org/task)" value="user" />
-              </div>
-      <div class="search-row" style="margin-bottom:8px">
-        <input id="toolQuery" class="search-input" placeholder="search.query" />
-        <div class="limit">top_k <input id="toolTopK" type="number" min="1" max="20" value="8" /></div>
-        <button class="btn" onclick="runToolSearch()">Run memory_search</button>
-      </div>
-      <div class="search-row">
-        <div class="limit">recent.limit <input id="toolRecentLimit" type="number" min="1" max="100" value="10" /></div>
-        <button class="btn secondary" onclick="runToolFetchRecent()">Run memory_fetch_recent</button>
-      </div>
-      <div id="toolResult" class="empty" style="margin-top:8px;text-align:left;white-space:pre-wrap">Tool result will appear here.</div>
-    </div>
-
     <div id="error" class="error" style="display:none"></div>
 
     <div class="kpis">
-      <div class="card kpi"><div class="kpi-label">Matched</div><div class="kpi-value" id="total">-</div></div>
-      <div class="card kpi"><div class="kpi-label">Active</div><div class="kpi-value" id="active">-</div></div>
-      <div class="card kpi"><div class="kpi-label">Deleted</div><div class="kpi-value" id="deleted">-</div></div>
-      <div class="card kpi"><div class="kpi-label">Showing</div><div class="kpi-value" id="showing">-</div></div>
+      <div class="card"><div class="kpi-label">Matched</div><div class="kpi-value" id="total">-</div></div>
+      <div class="card"><div class="kpi-label">Active</div><div class="kpi-value" id="active">-</div></div>
+      <div class="card"><div class="kpi-label">Deleted</div><div class="kpi-value" id="deleted">-</div></div>
+      <div class="card"><div class="kpi-label">Showing</div><div class="kpi-value" id="showing">-</div></div>
     </div>
 
     <div class="card search-card">
-      <div class="search-row" style="margin-bottom:8px"><strong>Async Pipeline Status</strong><span class="hint">向量化/打标后台进度（每次刷新自动更新）</span></div>
-      <div id="pipelineStatus" class="empty" style="text-align:left;white-space:pre-wrap">Loading...</div>
+      <div class="search-row" style="margin-bottom:8px"><strong>Async Pipeline Status</strong><span class="hint">后端声明 sections，前端按 metrics 自动渲染</span></div>
+      <div id="pipelineStatus" class="pipeline-grid"></div>
     </div>
 
     <div id="rows" class="list"></div>
@@ -127,13 +172,21 @@
     const token = new URLSearchParams(location.search).get('token') || localStorage.getItem('memsense_token') || prompt('Input dashboard token');
     if (token) localStorage.setItem('memsense_token', token);
     const authHeaders = { 'content-type': 'application/json', 'x-memsense-token': token || '' };
+    window.__contract = null;
+    window.__latest = [];
 
     function tryParseJsonText(text) { try { return JSON.parse(text); } catch { return null; } }
     function statusClass(status) { return ['active','archived','deleted'].includes(status) ? status : 'archived'; }
 
-    function contentPreview(x) {
-      const raw = String(x.content || '');
-      const parsed = tryParseJsonText(raw);
+    function showError(text) {
+      const el = byId('error');
+      if (!text) { el.style.display = 'none'; el.textContent = ''; return; }
+      el.style.display = 'block';
+      el.textContent = text;
+    }
+
+    function contentPreview(raw) {
+      const parsed = tryParseJsonText(String(raw || ''));
       if (parsed && typeof parsed === 'object' && (parsed.user || parsed.assistant)) {
         return `
           <div class="content-pair">
@@ -141,51 +194,62 @@
             <div class="bubble"><div class="bubble-label">Assistant</div><div>${escapeHtml(parsed.assistant || '')}</div></div>
           </div>`;
       }
-      return `<div class="content">${escapeHtml(raw)}</div>`;
+      return `<div class="content">${escapeHtml(raw || '')}</div>`;
     }
 
-    function tagsInline(tags) {
-      if (!Array.isArray(tags) || tags.length === 0) return '<span>tags: —</span>';
-      return `<span>tags:</span><span class="tags">${tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</span>`;
+    function renderFieldValue(type, value) {
+      if (type === 'tags') {
+        const tags = Array.isArray(value) ? value : [];
+        if (!tags.length) return '<span class="meta-value">—</span>';
+        return `<div class="tags">${tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>`;
+      }
+      if (type === 'badge') {
+        return `<span class="badge">${escapeHtml(value ?? '—')}</span>`;
+      }
+      if (type === 'datetime') {
+        const num = Number(value);
+        return `<span class="meta-value">${Number.isFinite(num) ? escapeHtml(new Date(num).toLocaleString()) : '—'}</span>`;
+      }
+      if (type === 'number') {
+        return `<span class="meta-value">${value == null ? '—' : escapeHtml(value)}</span>`;
+      }
+      return `<span class="meta-value">${escapeHtml(value ?? '—')}</span>`;
     }
 
-    function compactMeta(x) {
-      const items = [
-        `tenant:${escapeHtml(x.tenant_id || '—')}`,
-        `scope:${escapeHtml(x.scope || '—')}`,
-        `user:${escapeHtml(x.user_id || '—')}`,
-        `session:${escapeHtml(x.session_id || '—')}`,
-        `type:${escapeHtml(x.type_hint || '—')}`,
-        `kind:${escapeHtml(x.memory_kind || 'episodic')}`,
-        `source:${escapeHtml(x.source || '—')}`,
-        `time:${new Date(Number(x.timestamp_ms)).toLocaleString()}`,
-      ];
-      return items.map((t,i)=>`${i?'<span class="sep">•</span>':''}<span>${t}</span>`).join('');
+    function renderMeta(x) {
+      const contract = window.__contract?.memoryList;
+      const meta = x.meta || {};
+      const fields = contract?.metaFields || Object.keys(meta);
+      const fieldTypes = contract?.fieldTypes || {};
+      const labels = contract?.labels || {};
+      const items = fields
+        .filter((key) => meta[key] !== undefined)
+        .map((key) => `
+          <div class="meta-item">
+            <div class="meta-label">${escapeHtml(labels[key] || key)}</div>
+            ${renderFieldValue(fieldTypes[key] || 'text', meta[key])}
+          </div>`)
+        .join('');
+      return `<div class="meta-grid">${items}</div>`;
     }
 
-    async function setStatus(memoryId, status){
+    async function setStatus(memoryId, status) {
       const res = await fetch('/v1/dashboard/set_status', { method: 'POST', headers: authHeaders, body: JSON.stringify({ memory_id: memoryId, status }) });
       if (!res.ok) return showError(`set_status failed: ${res.status}`);
-      await load();
-    }
-
-    function showError(text) {
-      const el = byId('error');
-      if (!text) { el.style.display = 'none'; el.textContent = ''; return; }
-      el.style.display = 'block'; el.textContent = text;
+      await loadOverview();
     }
 
     function renderRows(items) {
       const showDeleted = byId('showDeleted').checked;
-      const list = showDeleted ? items : items.filter(x => x.status !== 'deleted');
+      const list = showDeleted ? items : items.filter((x) => x.status !== 'deleted');
       byId('showing').textContent = list.length;
       const root = byId('rows');
       root.innerHTML = '';
       if (!list.length) {
-        root.innerHTML = `<div class="empty">没有匹配到结果。换个关键词试试，比如 content、user、source、tag 或 memory_id。</div>`;
+        root.innerHTML = `<div class="card empty">没有匹配到结果。换个关键词试试，比如 content、user、source、tag 或 memory_id。</div>`;
         return;
       }
-      list.forEach(x => {
+      list.forEach((x) => {
         const article = document.createElement('article');
         article.className = 'card memory-card';
         article.innerHTML = `
@@ -193,14 +257,9 @@
             <div class="memory-id">${escapeHtml(x.memory_id)}</div>
             <div class="status ${statusClass(x.status)}">${escapeHtml(x.status)}</div>
           </div>
-          ${contentPreview(x)}
-          <div class="compact-line">${compactMeta(x)}</div>
-          <div class="compact-line">${tagsInline(x.tags)}</div>
+          ${contentPreview(x.content)}
+          ${renderMeta(x)}
           <div class="memory-footer">
-            <div class="scores">
-              <div class="score-pill">score <b>${escapeHtml(x.score)}</b></div>
-              <div class="score-pill">conf <b>${escapeHtml(x.confidence)}</b></div>
-            </div>
             <div class="actions">
               <button class="mini-btn secondary" data-id="${escapeHtml(x.memory_id)}" data-s="archived">归档</button>
               <button class="mini-btn secondary" data-id="${escapeHtml(x.memory_id)}" data-s="active">恢复</button>
@@ -209,67 +268,69 @@
           </div>`;
         root.appendChild(article);
       });
-      root.querySelectorAll('button[data-id]').forEach(btn => btn.addEventListener('click', () => setStatus(btn.dataset.id, btn.dataset.s)));
+      root.querySelectorAll('button[data-id]').forEach((btn) => btn.addEventListener('click', () => setStatus(btn.dataset.id, btn.dataset.s)));
     }
 
-    function resetSearch() { byId('q').value = ''; load(); }
-
-    function toolBasePayload() {
-      return {
-        tenant_id: byId('toolTenant').value || 'default',
-        scope: byId('toolScope').value || 'user',
-      };
-    }
-
-    function setToolResult(data) {
-      byId('toolResult').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-    }
-
-    async function runToolSearch() {
-      try {
-        const payload = {
-          ...toolBasePayload(),
-          query: byId('toolQuery').value || '',
-          top_k: Number(byId('toolTopK').value || 8),
-        };
-        const r = await fetch('/v1/memory/search', { method:'POST', headers: authHeaders, body: JSON.stringify(payload) });
-        const j = await r.json();
-        setToolResult(j);
-      } catch (e) {
-        setToolResult(String(e?.message || e));
+    function renderPipeline(data) {
+      const root = byId('pipelineStatus');
+      const sections = data?.sections || [];
+      if (!sections.length) {
+        root.innerHTML = '<div class="empty">No pipeline sections.</div>';
+        return;
       }
+      root.innerHTML = sections.map((section) => {
+        const metrics = Object.entries(section.metrics || {})
+          .map(([key, value]) => `<div class="pipeline-metric"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></div>`)
+          .join('');
+        return `<div class="pipeline-item"><div class="pipeline-title">${escapeHtml(section.label || section.key)}</div>${metrics}</div>`;
+      }).join('');
     }
 
-    async function runToolFetchRecent() {
-      try {
-        const payload = {
-          ...toolBasePayload(),
-          limit: Number(byId('toolRecentLimit').value || 10),
-        };
-        const r = await fetch('/v1/memory/fetch_recent', { method:'POST', headers: authHeaders, body: JSON.stringify(payload) });
-        const j = await r.json();
-        setToolResult(j);
-      } catch (e) {
-        setToolResult(String(e?.message || e));
-      }
+    async function loadContract() {
+      const r = await fetch('/v1/dashboard/contract', { headers: authHeaders });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error || `contract failed: ${r.status}`);
+      window.__contract = j.data;
     }
 
-    async function load(){
-
-      showError('');
+    async function loadOverview() {
       const payload = { q: byId('q').value || null, limit: Number(byId('limit').value || 50) };
       const r = await fetch('/v1/dashboard/overview', { method:'POST', headers: authHeaders, body: JSON.stringify(payload) });
       const j = await r.json();
-      if (!r.ok || !j.ok) return showError((j && (j.error || j.message)) ? `${j.error || j.message}` : `request failed: ${r.status}`);
+      if (!r.ok || !j.ok) throw new Error(j?.error || `overview failed: ${r.status}`);
       byId('total').textContent = j.data.counts.total;
       byId('active').textContent = j.data.counts.active;
       byId('deleted').textContent = j.data.counts.deleted;
+      byId('showing').textContent = j.data.counts.showing ?? 0;
       window.__latest = j.data.latest || [];
       renderRows(window.__latest);
     }
 
-    byId('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
-    load();
+    async function loadPipeline() {
+      const r = await fetch('/v1/dashboard/pipeline_status', { headers: authHeaders });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error || `pipeline failed: ${r.status}`);
+      renderPipeline(j.data);
+    }
+
+    async function loadAll() {
+      try {
+        showError('');
+        await loadContract();
+        await loadOverview();
+        await loadPipeline();
+      } catch (e) {
+        showError(String(e?.message || e));
+      }
+    }
+
+    function resetSearch() {
+      byId('q').value = '';
+      loadAll();
+    }
+
+    byId('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') loadAll(); });
+    loadAll();
   </script>
 </body>
 </html>
