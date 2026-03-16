@@ -58,7 +58,19 @@ openclaw plugins list
 - Added docker-compose for local production-like startup.
 
 ⚠️ Remaining placeholder(s) (explicitly tracked):
-- Dashboard UI is not implemented yet (API/backend foundation is done first).
+- Dashboard auth is token-based RBAC for v1 (no SSO/OAuth yet).
+- Background worker (retry/DLQ) is not split as an independent service yet.
+
+## Dashboard RBAC
+
+Set token-role mapping via env:
+
+`MEMSENSE_DASHBOARD_TOKENS_JSON={"token_viewer":"viewer","token_ops":"operator","token_admin":"admin"}`
+
+Role levels:
+- `viewer`: can read overview
+- `operator`: can archive/restore status
+- `admin`: reserved for future privileged operations
 
 ## Embedding config (production)
 

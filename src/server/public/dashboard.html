@@ -31,10 +31,13 @@
   </table>
   <script>
     const byId = (id) => document.getElementById(id);
+    const token = new URLSearchParams(location.search).get('token') || localStorage.getItem('memsense_token') || prompt('Input dashboard token');
+    if (token) localStorage.setItem('memsense_token', token);
+    const authHeaders = { 'content-type': 'application/json', 'x-memsense-token': token || '' };
 
     async function setStatus(memoryId, status){
       await fetch('/v1/dashboard/set_status', {
-        method:'POST', headers:{'content-type':'application/json'},
+        method:'POST', headers: authHeaders,
         body: JSON.stringify({ memory_id: memoryId, status })
       });
       await load();
@@ -48,7 +51,7 @@
         user_id: byId('user').value || null,
         limit: 50,
       };
-      const r = await fetch('/v1/dashboard/overview', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(payload)});
+      const r = await fetch('/v1/dashboard/overview', {method:'POST', headers: authHeaders, body: JSON.stringify(payload)});
       const j = await r.json();
       byId('total').textContent = j.data.counts.total;
       byId('active').textContent = j.data.counts.active;

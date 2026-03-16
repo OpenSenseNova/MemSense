@@ -13,12 +13,14 @@ import {
   dashboardOverview,
   setChunkStatus,
 } from './service.js';
+import { createAuth } from './auth.js';
 
 export function createApp() {
   const app = express();
+  const { requireRole } = createAuth();
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   app.use(express.json({ limit: '1mb' }));
-  app.use('/dashboard', express.static(path.join(__dirname, 'public')));
+  app.use('/dashboard', requireRole('viewer'), express.static(path.join(__dirname, 'public')));
 
   app.get('/healthz', (_req, res) => {
     res.json({ ok: true });
@@ -99,7 +101,7 @@ export function createApp() {
     }
   });
 
-  app.post('/v1/dashboard/overview', async (req, res) => {
+  app.post('/v1/dashboard/overview', requireRole('viewer'), async (req, res) => {
     try {
       const data = await dashboardOverview(req.body || {});
       res.json({ ok: true, data });
@@ -108,7 +110,7 @@ export function createApp() {
     }
   });
 
-  app.post('/v1/dashboard/set_status', async (req, res) => {
+  app.post('/v1/dashboard/set_status', requireRole('operator'), async (req, res) => {
     try {
       const data = await setChunkStatus(req.body || {});
       res.json({ ok: true, data });
