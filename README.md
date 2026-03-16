@@ -65,21 +65,32 @@ Memsense is built for real agent workloads:
 
 ### 1) One-click bootstrap (recommended)
 
+**Docker available:**
+
 ```bash
 cp .env.example .env
 bash scripts/bootstrap.sh
 ```
 
-This command will ask you to choose embedding strategy:
-- `openai` (OpenAI-compatible / Qwen embedding API)
-- `local` (local BGE with auto model download)
+**No Docker environment:**
 
-You can also run non-interactive:
+```bash
+cp .env.example .env
+bash scripts/bootstrap-nodocker.sh
+```
+
+Both commands will ask you to choose embedding strategy:
+- `openai` (OpenAI-compatible / Qwen embedding API)
+- `local` (local BGE)
+
+Non-interactive:
 
 ```bash
 bash scripts/bootstrap.sh openai
-# or
 bash scripts/bootstrap.sh local
+
+bash scripts/bootstrap-nodocker.sh openai
+bash scripts/bootstrap-nodocker.sh local
 ```
 
 > Local mode first startup may take longer because the BGE model is downloaded automatically.
