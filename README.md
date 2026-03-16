@@ -11,7 +11,7 @@ Memory OS plugin scaffold for OpenClaw.
   - `memory_os_promote_demote`
   - `memory_os_forget`
   - `memory_os_audit`
-- Local mode engine (`src/local-engine.js`) for quick local test.
+- Production backend mode via HTTP API (`MEMSENSE_API_URL`) + PostgreSQL.
 
 ## Local test
 ```bash
