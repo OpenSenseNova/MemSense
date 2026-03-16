@@ -12,6 +12,7 @@ import {
   audit,
   dashboardOverview,
   setChunkStatus,
+  pipelineStatus,
 } from './service.js';
 import { createAuth } from './auth.js';
 import { buildSetupStatus } from './system-status.js';
@@ -123,6 +124,15 @@ export function createApp() {
   app.post('/v1/dashboard/set_status', requireRole('operator'), async (req, res) => {
     try {
       const data = await setChunkStatus(req.body || {});
+      res.json({ ok: true, data });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  });
+
+  app.get('/v1/dashboard/pipeline_status', requireRole('viewer'), async (_req, res) => {
+    try {
+      const data = await pipelineStatus();
       res.json({ ok: true, data });
     } catch (e) {
       res.status(500).json({ ok: false, error: String(e?.message || e) });

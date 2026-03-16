@@ -218,3 +218,34 @@ export async function setChunkStatus({ memory_id, status }) {
   if (!r.rows.length) return { ok: false, reason: 'not_found' };
   return { ok: true, item: r.rows[0] };
 }
+
+export async function pipelineStatus() {
+  const [chunksQ, embDoneQ, embPendingQ, embRunningQ, embFailedQ, tagPendingQ, tagRunningQ, tagFailedQ] = await Promise.all([
+    query(`SELECT COUNT(*)::int AS n FROM memory_chunks`),
+    query(`SELECT COUNT(*)::int AS n FROM memory_chunk_embeddings`),
+    query(`SELECT COUNT(*)::int AS n FROM embedding_jobs WHERE status='pending'`),
+    query(`SELECT COUNT(*)::int AS n FROM embedding_jobs WHERE status='running'`),
+    query(`SELECT COUNT(*)::int AS n FROM embedding_jobs WHERE status='failed'`),
+    query(`SELECT COUNT(*)::int AS n FROM tag_jobs WHERE status='pending'`),
+    query(`SELECT COUNT(*)::int AS n FROM tag_jobs WHERE status='running'`),
+    query(`SELECT COUNT(*)::int AS n FROM tag_jobs WHERE status='failed'`),
+  ]);
+
+  const totalChunks = chunksQ.rows[0]?.n || 0;
+  const embeddedChunks = embDoneQ.rows[0]?.n || 0;
+  const vectorReadyRate = totalChunks ? Number((embeddedChunks / totalChunks).toFixed(4)) : 0;
+
+  return {
+    chunks: { total: totalChunks, embedded: embeddedChunks, vector_ready_rate: vectorReadyRate },
+    embedding_jobs: {
+      pending: embPendingQ.rows[0]?.n || 0,
+      running: embRunningQ.rows[0]?.n || 0,
+      failed: embFailedQ.rows[0]?.n || 0,
+    },
+    tag_jobs: {
+      pending: tagPendingQ.rows[0]?.n || 0,
+      running: tagRunningQ.rows[0]?.n || 0,
+      failed: tagFailedQ.rows[0]?.n || 0,
+    },
+  };
+}

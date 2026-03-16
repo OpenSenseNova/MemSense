@@ -91,8 +91,7 @@
       <div class="search-row" style="margin-bottom:8px">
         <input id="toolTenant" class="search-input" placeholder="tenant_id (default)" value="default" />
         <input id="toolScope" class="search-input" placeholder="scope (user/team/org/task)" value="user" />
-        <input id="toolSession" class="search-input" placeholder="session_id (optional)" />
-      </div>
+              </div>
       <div class="search-row" style="margin-bottom:8px">
         <input id="toolQuery" class="search-input" placeholder="search.query" />
         <div class="limit">top_k <input id="toolTopK" type="number" min="1" max="20" value="8" /></div>
@@ -112,6 +111,11 @@
       <div class="card kpi"><div class="kpi-label">Active</div><div class="kpi-value" id="active">-</div></div>
       <div class="card kpi"><div class="kpi-label">Deleted</div><div class="kpi-value" id="deleted">-</div></div>
       <div class="card kpi"><div class="kpi-label">Showing</div><div class="kpi-value" id="showing">-</div></div>
+    </div>
+
+    <div class="card search-card">
+      <div class="search-row" style="margin-bottom:8px"><strong>Async Pipeline Status</strong><span class="hint">向量化/打标后台进度（每次刷新自动更新）</span></div>
+      <div id="pipelineStatus" class="empty" style="text-align:left;white-space:pre-wrap">Loading...</div>
     </div>
 
     <div id="rows" class="list"></div>
@@ -213,7 +217,6 @@
       return {
         tenant_id: byId('toolTenant').value || 'default',
         scope: byId('toolScope').value || 'user',
-        session_id: byId('toolSession').value || null,
       };
     }
 
