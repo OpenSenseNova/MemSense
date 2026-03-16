@@ -1,7 +1,18 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
-import { MemoryService } from "./src/tools/memory-service.js";
+const MEMSENSE_API_URL = process.env.MEMSENSE_API_URL || "http://127.0.0.1:8787";
 
-const memory = new MemoryService();
+async function callApi(path: string, body: unknown) {
+  const res = await fetch(`${MEMSENSE_API_URL}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  const json = await res.json();
+  if (!res.ok || !json?.ok) {
+    throw new Error(json?.error || `api failed: ${res.status}`);
+  }
+  return json.data;
+}
 
 function withTrace(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2, 10)}`;
@@ -72,15 +83,15 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("write");
         try {
-          const saved = memory.save({
-            tenantId: params.tenant_id,
+          const saved = await callApi("/v1/memory/save", {
+            tenant_id: params.tenant_id,
             scope: params.scope,
-            sessionId: params.session_id,
-            userId: params.user_id,
+            session_id: params.session_id,
+            user_id: params.user_id,
             content: params.content,
-            typeHint: params.type_hint,
+            type_hint: params.type_hint,
             source: params.source,
-            taskTag: params.task_tag,
+            task_tag: params.task_tag,
             tags: params.tags,
             timestamp: params.timestamp,
             score: params.score,
@@ -102,13 +113,13 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("retrieve");
         try {
-          const candidates = memory.search({
-            tenantId: params.tenant_id,
+          const candidates = await callApi("/v1/memory/search", {
+            tenant_id: params.tenant_id,
             scope: params.scope,
-            sessionId: params.session_id,
-            userId: params.user_id,
+            session_id: params.session_id,
+            user_id: params.user_id,
             query: params.query,
-            topK: params.top_k ?? 8,
+            top_k: params.top_k ?? 8,
           });
           return ok({ candidates }, traceId, false);
         } catch (e: any) {
@@ -126,15 +137,15 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("save");
         try {
-          const saved = memory.save({
-            tenantId: params.tenant_id,
+          const saved = await callApi("/v1/memory/save", {
+            tenant_id: params.tenant_id,
             scope: params.scope,
-            sessionId: params.session_id,
-            userId: params.user_id,
+            session_id: params.session_id,
+            user_id: params.user_id,
             content: params.content,
-            typeHint: params.type_hint,
+            type_hint: params.type_hint,
             source: params.source,
-            taskTag: params.task_tag,
+            task_tag: params.task_tag,
             tags: params.tags,
             timestamp: params.timestamp,
             score: params.score,
@@ -156,13 +167,13 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("search");
         try {
-          const chunks = memory.search({
-            tenantId: params.tenant_id,
+          const chunks = await callApi("/v1/memory/search", {
+            tenant_id: params.tenant_id,
             scope: params.scope,
-            sessionId: params.session_id,
-            userId: params.user_id,
+            session_id: params.session_id,
+            user_id: params.user_id,
             query: params.query,
-            topK: params.top_k ?? 8,
+            top_k: params.top_k ?? 8,
           });
           return ok({ chunks }, traceId);
         } catch (e: any) {
@@ -190,14 +201,14 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("fetch_recent");
         try {
-          const chunks = memory.fetchRecent({
-            tenantId: params.tenant_id,
+          const chunksResp = await callApi("/v1/memory/fetch_recent", {
+            tenant_id: params.tenant_id,
             scope: params.scope,
-            sessionId: params.session_id,
-            userId: params.user_id,
+            session_id: params.session_id,
+            user_id: params.user_id,
             limit: params.limit ?? 10,
           });
-          return ok({ chunks, total: chunks.length }, traceId);
+          return ok(chunksResp, traceId);
         } catch (e: any) {
           return fail("FETCH_RECENT_FAILED", e?.message || "fetch recent failed", traceId, true);
         }
@@ -223,14 +234,14 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("list_recent");
         try {
-          const items = memory.fetchRecent({
-            tenantId: params.tenant_id,
+          const itemsResp = await callApi("/v1/memory/fetch_recent", {
+            tenant_id: params.tenant_id,
             scope: params.scope,
-            sessionId: params.session_id,
-            userId: params.user_id,
+            session_id: params.session_id,
+            user_id: params.user_id,
             limit: params.limit ?? 10,
           });
-          return ok({ items, total: items.length }, traceId);
+          return ok({ items: itemsResp.chunks, total: itemsResp.total }, traceId);
         } catch (e: any) {
           return fail("LIST_RECENT_FAILED", e?.message || "list recent failed", traceId, true);
         }
@@ -257,15 +268,15 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("search_by_time");
         try {
-          const items = memory.store.searchByTime({
-            tenantId: params.tenant_id,
+          const itemsResp = await callApi("/v1/memory/search_by_time", {
+            tenant_id: params.tenant_id,
             scope: params.scope,
-            fromTs: params.from_ts,
-            toTs: params.to_ts,
+            from_ts: params.from_ts,
+            to_ts: params.to_ts,
             field: params.field ?? "updated_at",
             limit: params.limit ?? 20,
           });
-          return ok({ items, total: items.length }, traceId);
+          return ok(itemsResp, traceId);
         } catch (e: any) {
           return fail("SEARCH_BY_TIME_FAILED", e?.message || "search by time failed", traceId, true);
         }
@@ -288,7 +299,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("feedback");
         try {
-          const result = memory.store.feedback({ memoryId: params.memory_id, label: params.label });
+          const result = await callApi("/v1/memory/feedback", { memory_id: params.memory_id, label: params.label });
           return ok(result, traceId);
         } catch (e: any) {
           return fail("FEEDBACK_FAILED", e?.message || "feedback failed", traceId, true);
@@ -312,7 +323,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("promote_demote");
         try {
-          const result = memory.store.promoteDemote({ memoryId: params.memory_id, action: params.action });
+          const result = await callApi("/v1/memory/promote_demote", { memory_id: params.memory_id, action: params.action });
           if (!result.ok) return fail("NOT_FOUND", "memory not found", traceId, false);
           return ok(result, traceId);
         } catch (e: any) {
@@ -334,7 +345,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("forget");
         try {
-          const result = memory.store.forget({ memoryId: params.memory_id });
+          const result = await callApi("/v1/memory/forget", { memory_id: params.memory_id });
           return ok(result, traceId);
         } catch (e: any) {
           return fail("FORGET_FAILED", e?.message || "forget failed", traceId, true);
@@ -355,7 +366,8 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("audit");
         try {
-          return ok({ events: memory.store.audit(params.memory_id) }, traceId);
+          const data = await callApi("/v1/memory/audit", { memory_id: params.memory_id });
+          return ok(data, traceId);
         } catch (e: any) {
           return fail("AUDIT_FAILED", e?.message || "audit failed", traceId, true);
         }

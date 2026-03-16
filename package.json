@@ -9,7 +9,13 @@
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "rehearsal:smoke": "bash scripts/rehearsal-smoke.sh"
+    "rehearsal:smoke": "bash scripts/rehearsal-smoke.sh",
+    "server": "node src/server/index.js",
+    "db:migrate": "node scripts/db-migrate.mjs"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.3"
   },
   "openclaw": {
     "extensions": [

@@ -49,6 +49,14 @@ openclaw plugins list
 }
 ```
 
-## Next step
-- Replace local engine with remote Memory Core HTTP client.
-- Keep plugin thin (timeout/fallback/ACL/trace only), heavy async jobs in core service.
+## Production migration status
+
+✅ Done in this repo now:
+- Plugin tools call a real HTTP backend (`MEMSENSE_API_URL`) instead of local in-memory store.
+- Added `memsense-server` with PostgreSQL persistence.
+- Added DB schema + migration script.
+- Added docker-compose for local production-like startup.
+
+⚠️ Remaining placeholder(s) (explicitly tracked):
+- Search currently uses PostgreSQL lexical match (`ILIKE`) for v1; vector retrieval (`pgvector`) is not wired yet.
+- Dashboard UI is not implemented yet (API/backend foundation is done first).
