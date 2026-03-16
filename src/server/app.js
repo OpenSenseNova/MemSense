@@ -11,6 +11,7 @@ import {
   forget,
   audit,
   dashboardOverview,
+  setChunkStatus,
 } from './service.js';
 
 export function createApp() {
@@ -101,6 +102,15 @@ export function createApp() {
   app.post('/v1/dashboard/overview', async (req, res) => {
     try {
       const data = await dashboardOverview(req.body || {});
+      res.json({ ok: true, data });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  });
+
+  app.post('/v1/dashboard/set_status', async (req, res) => {
+    try {
+      const data = await setChunkStatus(req.body || {});
       res.json({ ok: true, data });
     } catch (e) {
       res.status(500).json({ ok: false, error: String(e?.message || e) });

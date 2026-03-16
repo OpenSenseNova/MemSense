@@ -129,16 +129,21 @@ export async function audit({ memory_id }) {
   return { events: r.rows };
 }
 
-export async function dashboardOverview({ tenant_id, scope }) {
-  const where = `WHERE ($1::text IS NULL OR tenant_id = $1) AND ($2::text IS NULL OR scope = $2)`;
-  const totalQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where}`, [tenant_id || null, scope || null]);
-  const activeQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'active'`, [tenant_id || null, scope || null]);
-  const deletedQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'deleted'`, [tenant_id || null, scope || null]);
+export async function dashboardOverview({ tenant_id, scope, session_id, user_id, limit = 20 }) {
+  const args = [tenant_id || null, scope || null, session_id || null, user_id || null, Number(limit)];
+  const where = `WHERE ($1::text IS NULL OR tenant_id = $1)
+    AND ($2::text IS NULL OR scope = $2)
+    AND ($3::text IS NULL OR session_id = $3)
+    AND ($4::text IS NULL OR user_id = $4)`;
+
+  const totalQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where}`, args.slice(0, 4));
+  const activeQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'active'`, args.slice(0, 4));
+  const deletedQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'deleted'`, args.slice(0, 4));
   const latestQ = await query(
-    `SELECT memory_id, tenant_id, scope, session_id, user_id, score, timestamp_ms
+    `SELECT memory_id, tenant_id, scope, session_id, user_id, score, timestamp_ms, status
      FROM memory_chunks ${where}
-     ORDER BY timestamp_ms DESC LIMIT 20`,
-    [tenant_id || null, scope || null],
+     ORDER BY timestamp_ms DESC LIMIT $5`,
+    args,
   );
   return {
     counts: {
@@ -148,4 +153,16 @@ export async function dashboardOverview({ tenant_id, scope }) {
     },
     latest: latestQ.rows,
   };
+}
+
+export async function setChunkStatus({ memory_id, status }) {
+  if (!['active', 'archived', 'deleted'].includes(String(status))) {
+    throw new Error('invalid status');
+  }
+  const r = await query(
+    `UPDATE memory_chunks SET status = $2, updated_at = NOW() WHERE memory_id = $1 RETURNING memory_id, status`,
+    [memory_id, status],
+  );
+  if (!r.rows.length) return { ok: false, reason: 'not_found' };
+  return { ok: true, item: r.rows[0] };
 }

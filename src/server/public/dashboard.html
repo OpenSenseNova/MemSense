@@ -3,33 +3,64 @@
 <head>
   <meta charset="utf-8" />
   <title>Memsense Dashboard</title>
-  <style>body{font-family:Arial;padding:20px} .kpis{display:flex;gap:16px} .card{border:1px solid #ddd;padding:12px;border-radius:8px} table{border-collapse:collapse;width:100%;margin-top:16px} td,th{border:1px solid #ddd;padding:8px}</style>
+  <style>
+    body{font-family:Arial;padding:20px} .kpis{display:flex;gap:16px;margin-bottom:12px}
+    .card{border:1px solid #ddd;padding:12px;border-radius:8px}
+    table{border-collapse:collapse;width:100%;margin-top:16px} td,th{border:1px solid #ddd;padding:8px}
+    .filters{display:flex;gap:8px;flex-wrap:wrap}
+    input,select,button{padding:6px}
+  </style>
 </head>
 <body>
   <h2>Memsense Dashboard (Session-first)</h2>
+  <div class="filters">
+    <input id="tenant" placeholder="tenant_id" />
+    <select id="scope"><option value="">scope(all)</option><option>user</option><option>team</option><option>org</option><option>task</option></select>
+    <input id="session" placeholder="session_id" />
+    <input id="user" placeholder="user_id" />
+    <button onclick="load()">查询</button>
+  </div>
   <div class="kpis">
     <div class="card">Total: <b id="total">-</b></div>
     <div class="card">Active: <b id="active">-</b></div>
     <div class="card">Deleted: <b id="deleted">-</b></div>
   </div>
   <table>
-    <thead><tr><th>memory_id</th><th>tenant</th><th>scope</th><th>session</th><th>user</th><th>score</th><th>timestamp</th></tr></thead>
+    <thead><tr><th>memory_id</th><th>tenant</th><th>scope</th><th>session</th><th>user</th><th>score</th><th>status</th><th>timestamp</th><th>op</th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
   <script>
+    const byId = (id) => document.getElementById(id);
+
+    async function setStatus(memoryId, status){
+      await fetch('/v1/dashboard/set_status', {
+        method:'POST', headers:{'content-type':'application/json'},
+        body: JSON.stringify({ memory_id: memoryId, status })
+      });
+      await load();
+    }
+
     async function load(){
-      const r = await fetch('/v1/dashboard/overview', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({})});
+      const payload = {
+        tenant_id: byId('tenant').value || null,
+        scope: byId('scope').value || null,
+        session_id: byId('session').value || null,
+        user_id: byId('user').value || null,
+        limit: 50,
+      };
+      const r = await fetch('/v1/dashboard/overview', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(payload)});
       const j = await r.json();
-      document.getElementById('total').textContent = j.data.counts.total;
-      document.getElementById('active').textContent = j.data.counts.active;
-      document.getElementById('deleted').textContent = j.data.counts.deleted;
-      const tb = document.getElementById('rows');
+      byId('total').textContent = j.data.counts.total;
+      byId('active').textContent = j.data.counts.active;
+      byId('deleted').textContent = j.data.counts.deleted;
+      const tb = byId('rows');
       tb.innerHTML = '';
       j.data.latest.forEach(x => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${x.memory_id}</td><td>${x.tenant_id}</td><td>${x.scope}</td><td>${x.session_id||''}</td><td>${x.user_id||''}</td><td>${x.score}</td><td>${new Date(Number(x.timestamp_ms)).toLocaleString()}</td>`;
+        tr.innerHTML = `<td>${x.memory_id}</td><td>${x.tenant_id}</td><td>${x.scope}</td><td>${x.session_id||''}</td><td>${x.user_id||''}</td><td>${x.score}</td><td>${x.status}</td><td>${new Date(Number(x.timestamp_ms)).toLocaleString()}</td><td><button data-id='${x.memory_id}' data-s='archived'>归档</button> <button data-id='${x.memory_id}' data-s='active'>恢复</button></td>`;
         tb.appendChild(tr);
       });
+      tb.querySelectorAll('button[data-id]').forEach(btn=>btn.addEventListener('click',()=>setStatus(btn.dataset.id, btn.dataset.s)));
     }
     load();
   </script>
