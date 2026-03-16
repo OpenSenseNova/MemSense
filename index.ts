@@ -1,7 +1,7 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
-import { LocalMemoryStore } from "./src/local-engine.js";
+import { MemoryService } from "./src/tools/memory-service.js";
 
-const store = new LocalMemoryStore();
+const memory = new MemoryService();
 
 function withTrace(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2, 10)}`;
@@ -72,7 +72,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("write");
         try {
-          const item = store.write({
+          const saved = memory.save({
             tenantId: params.tenant_id,
             scope: params.scope,
             sessionId: params.session_id,
@@ -87,7 +87,7 @@ export default {
             mode: params.mode,
             confidence: params.confidence,
           });
-          return ok({ accepted: true, memory_id: item.memoryId, mode: item.mode, version: 1 }, traceId);
+          return ok({ ...saved, version: 1 }, traceId);
         } catch (e: any) {
           return fail("WRITE_FAILED", e?.message || "write failed", traceId);
         }
@@ -102,7 +102,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("retrieve");
         try {
-          const candidates = store.retrieve({
+          const candidates = memory.search({
             tenantId: params.tenant_id,
             scope: params.scope,
             sessionId: params.session_id,
@@ -126,7 +126,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("save");
         try {
-          const item = store.write({
+          const saved = memory.save({
             tenantId: params.tenant_id,
             scope: params.scope,
             sessionId: params.session_id,
@@ -141,7 +141,7 @@ export default {
             mode: params.mode,
             confidence: params.confidence,
           });
-          return ok({ accepted: true, memory_id: item.memoryId, timestamp: item.timestamp, score: item.score }, traceId);
+          return ok(saved, traceId);
         } catch (e: any) {
           return fail("SAVE_FAILED", e?.message || "save failed", traceId);
         }
@@ -156,7 +156,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("search");
         try {
-          const chunks = store.retrieve({
+          const chunks = memory.search({
             tenantId: params.tenant_id,
             scope: params.scope,
             sessionId: params.session_id,
@@ -190,7 +190,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("fetch_recent");
         try {
-          const chunks = store.listRecent({
+          const chunks = memory.fetchRecent({
             tenantId: params.tenant_id,
             scope: params.scope,
             sessionId: params.session_id,
@@ -223,7 +223,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("list_recent");
         try {
-          const items = store.listRecent({
+          const items = memory.fetchRecent({
             tenantId: params.tenant_id,
             scope: params.scope,
             sessionId: params.session_id,
@@ -257,7 +257,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("search_by_time");
         try {
-          const items = store.searchByTime({
+          const items = memory.store.searchByTime({
             tenantId: params.tenant_id,
             scope: params.scope,
             fromTs: params.from_ts,
@@ -288,7 +288,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("feedback");
         try {
-          const result = store.feedback({ memoryId: params.memory_id, label: params.label });
+          const result = memory.store.feedback({ memoryId: params.memory_id, label: params.label });
           return ok(result, traceId);
         } catch (e: any) {
           return fail("FEEDBACK_FAILED", e?.message || "feedback failed", traceId, true);
@@ -312,7 +312,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("promote_demote");
         try {
-          const result = store.promoteDemote({ memoryId: params.memory_id, action: params.action });
+          const result = memory.store.promoteDemote({ memoryId: params.memory_id, action: params.action });
           if (!result.ok) return fail("NOT_FOUND", "memory not found", traceId, false);
           return ok(result, traceId);
         } catch (e: any) {
@@ -334,7 +334,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("forget");
         try {
-          const result = store.forget({ memoryId: params.memory_id });
+          const result = memory.store.forget({ memoryId: params.memory_id });
           return ok(result, traceId);
         } catch (e: any) {
           return fail("FORGET_FAILED", e?.message || "forget failed", traceId, true);
@@ -355,7 +355,7 @@ export default {
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("audit");
         try {
-          return ok({ events: store.audit(params.memory_id) }, traceId);
+          return ok({ events: memory.store.audit(params.memory_id) }, traceId);
         } catch (e: any) {
           return fail("AUDIT_FAILED", e?.message || "audit failed", traceId, true);
         }
