@@ -93,6 +93,10 @@ bash scripts/bootstrap-nodocker.sh openai
 bash scripts/bootstrap-nodocker.sh local
 ```
 
+For **no-docker mode**, the bootstrap script will automatically normalize `.env` to localhost defaults:
+- `MEMSENSE_DATABASE_URL=postgresql://127.0.0.1:5432/memsense`
+- `MEMSENSE_BGE_ENDPOINT=http://127.0.0.1:8080/embed`
+
 > Local mode first startup may take longer because the BGE model is downloaded automatically.
 
 ### 2) Install plugin into OpenClaw

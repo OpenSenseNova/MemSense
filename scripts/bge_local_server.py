@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os
-from typing import List
+from typing import List, Optional
 from fastapi import FastAPI
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
@@ -15,8 +15,8 @@ model = SentenceTransformer(MODEL_ID)
 
 class EmbedReq(BaseModel):
     input: str = ""
-    inputs: List[str] | None = None
-    model: str | None = None
+    inputs: Optional[List[str]] = None
+    model: Optional[str] = None
 
 @app.get("/healthz")
 def healthz():

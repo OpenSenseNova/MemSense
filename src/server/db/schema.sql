@@ -36,8 +36,12 @@ CREATE INDEX IF NOT EXISTS idx_chunks_user
 CREATE INDEX IF NOT EXISTS idx_chunks_status
   ON memory_chunks (tenant_id, scope, status, timestamp_ms DESC);
 
-CREATE INDEX IF NOT EXISTS idx_chunk_embeddings_ivfflat
-  ON memory_chunk_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+-- NOTE:
+-- Some pgvector versions require fixed dimensions (for example vector(1024))
+-- before building ivfflat indexes. We keep the embedding column dimension-flexible
+-- here so different embedding backends can work in local/no-docker setups.
+-- For small/self-hosted deployments, sequential scan is acceptable.
+-- Add an ANN index later once dimensions are standardized.
 
 CREATE TABLE IF NOT EXISTS memory_events (
   id BIGSERIAL PRIMARY KEY,

@@ -19,6 +19,16 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
+upsert_env() {
+  local key="$1"
+  local value="$2"
+  if grep -qE "^${key}=" .env; then
+    perl -0pi -e "s#^${key}=.*#${key}=${value}#m" .env
+  else
+    printf '\n%s=%s\n' "$key" "$value" >> .env
+  fi
+}
+
 STRATEGY="${1:-}"
 if [[ -z "$STRATEGY" ]]; then
   echo "Choose embedding strategy (no docker):"
@@ -32,19 +42,37 @@ if [[ -z "$STRATEGY" ]]; then
   fi
 fi
 
+# Sensible defaults for no-docker mode.
+upsert_env MEMSENSE_DATABASE_URL 'postgresql://127.0.0.1:5432/memsense'
+upsert_env MEMSENSE_PORT '8787'
+upsert_env MEMSENSE_DASHBOARD_TOKENS_JSON '{"demo":"admin"}'
+
 npm install
 
 if [[ "$STRATEGY" == "openai" ]]; then
   echo "[memsense] no-docker openai mode selected"
-  echo "[memsense] ensure MEMSENSE_OPENAI_API_KEY and MEMSENSE_DATABASE_URL in .env"
+  upsert_env MEMSENSE_EMBEDDING_PROVIDER 'openai'
+  echo "[memsense] ensure MEMSENSE_OPENAI_API_KEY is set in .env"
 elif [[ "$STRATEGY" == "local" ]]; then
   echo "[memsense] no-docker local BGE mode selected"
+  upsert_env MEMSENSE_EMBEDDING_PROVIDER 'bge_http'
+  upsert_env MEMSENSE_BGE_ENDPOINT 'http://127.0.0.1:8080/embed'
+  upsert_env MEMSENSE_BGE_MODEL 'BAAI/bge-large-zh-v1.5'
   bash scripts/start-local-bge-python.sh
 else
   echo "[memsense] invalid strategy: $STRATEGY"
   echo "Usage: bash scripts/bootstrap-nodocker.sh [openai|local]"
   exit 1
 fi
+
+echo "[memsense] using database: $(grep '^MEMSENSE_DATABASE_URL=' .env | cut -d= -f2-)"
+if [[ "$STRATEGY" == "local" ]]; then
+  echo "[memsense] using local embedding endpoint: $(grep '^MEMSENSE_BGE_ENDPOINT=' .env | cut -d= -f2-)"
+fi
+
+set -a
+source .env
+set +a
 
 npm run db:migrate
 
