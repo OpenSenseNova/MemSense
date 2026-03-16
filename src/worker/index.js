@@ -1,6 +1,18 @@
-import { embedText, toPgVectorLiteral } from '../server/embedding/client.js';
-import { query } from '../server/db/client.js';
-import { claimNextEmbeddingJob, markJobDone, markJobRetry, markJobDlq } from './queue.js';
+import { loadDotEnv } from '../env/load-env.js';
+
+await loadDotEnv();
+
+const [
+  { embedText, toPgVectorLiteral },
+  { query },
+  { assertSchemaReady },
+  { claimNextEmbeddingJob, markJobDone, markJobRetry, markJobDlq },
+] = await Promise.all([
+  import('../server/embedding/client.js'),
+  import('../server/db/client.js'),
+  import('../server/db/readiness.js'),
+  import('./queue.js'),
+]);
 
 const MAX_ATTEMPTS = Number(process.env.MEMSENSE_WORKER_MAX_ATTEMPTS || 5);
 const IDLE_MS = Number(process.env.MEMSENSE_WORKER_IDLE_MS || 800);
@@ -36,6 +48,8 @@ async function loop() {
     }
   }
 }
+
+await assertSchemaReady('memsense-worker');
 
 loop().catch((e) => {
   console.error('[memsense-worker] fatal', e);

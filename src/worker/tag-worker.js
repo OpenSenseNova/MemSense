@@ -1,6 +1,18 @@
-import { query } from '../server/db/client.js';
-import { claimNextTagJob, markTagJobDone, markTagJobRetry, markTagJobDlq } from './tag-queue.js';
-import { generateTagsWithOpenClaw, mergeTags } from './tag-model.js';
+import { loadDotEnv } from '../env/load-env.js';
+
+await loadDotEnv();
+
+const [
+  { query },
+  { assertSchemaReady },
+  { claimNextTagJob, markTagJobDone, markTagJobRetry, markTagJobDlq },
+  { generateTagsWithOpenClaw, mergeTags },
+] = await Promise.all([
+  import('../server/db/client.js'),
+  import('../server/db/readiness.js'),
+  import('./tag-queue.js'),
+  import('./tag-model.js'),
+]);
 
 const MAX_ATTEMPTS = Number(process.env.MEMSENSE_TAG_WORKER_MAX_ATTEMPTS || 4);
 const IDLE_MS = Number(process.env.MEMSENSE_TAG_WORKER_IDLE_MS || 1200);
@@ -38,6 +50,8 @@ async function loop() {
     }
   }
 }
+
+await assertSchemaReady('memsense-tag-worker');
 
 loop().catch((e) => {
   console.error('[memsense-tag-worker] fatal', e);
