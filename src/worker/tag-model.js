@@ -56,12 +56,13 @@ export async function generateTagsWithOpenClaw(content) {
     '--message', prompt,
     '--json',
     '--timeout', '90',
-  ], { maxBuffer: 1024 * 1024 });
+  ], { maxBuffer: 1024 * 1024, cwd: process.env.HOME || '/tmp' });
 
   let out = { tags: [], memory_kind: 'episodic' };
   try {
     const j = JSON.parse(stdout);
-    out = tryExtractTaggerOutput(j?.result || j?.output || j?.content || j?.message || stdout);
+    const text = j?.result?.payloads?.[0]?.text || j?.result || j?.output || j?.content || j?.message || stdout;
+    out = tryExtractTaggerOutput(text);
   } catch {
     out = tryExtractTaggerOutput(stdout);
   }
