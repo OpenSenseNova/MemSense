@@ -99,10 +99,10 @@ http://127.0.0.1:8787/dashboard?token=demo
 
 ## Learn more
 
-- Product / feature docs: `docs/features/`
-- Dashboard RBAC: `docs/features/dashboard-rbac.md`
-- Embedding + search: `docs/features/embedding-search.md`
-- Worker retry / DLQ: `docs/features/worker-retry-dlq.md`
+- Docs hub: [`docs/README.md`](docs/README.md)
+- Retrieval logic: [`docs/features/embedding-search.md`](docs/features/embedding-search.md)
+- Dashboard / RBAC: [`docs/features/dashboard-rbac.md`](docs/features/dashboard-rbac.md)
+- Worker reliability: [`docs/features/worker-retry-dlq.md`](docs/features/worker-retry-dlq.md)
 
 ---
 
