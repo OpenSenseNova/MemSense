@@ -2,8 +2,8 @@
 
 # Memsense
 
-<p><strong>Production-ready memory system for OpenClaw agents</strong></p>
-<p>Vector retrieval · Hybrid rerank · Async worker · Operational dashboard</p>
+<p><strong>A memory brain for OpenClaw agents</strong></p>
+<p>Biomimetic memory · experience trajectory · self-evolving retrieval · continual-learning ready</p>
 
 <p>
   <img alt="version" src="https://img.shields.io/badge/version-0.1.0-4f46e5" />
@@ -20,32 +20,95 @@
 
 ---
 
-## Why Memsense
+## What is Memsense?
 
-Memsense is built for real agent workloads:
+Memsense is not just a vector database wrapper or a thin memory plugin.
 
-- **Long-term memory that scales** (PostgreSQL + pgvector)
-- **Better retrieval quality** (vector + FTS lexical dual recall + temporal-aware hybrid rerank + diversity selection)
-- **Reliable write path** (async worker, retry, DLQ)
-- **Operational visibility** (session-first dashboard + RBAC)
-- **OpenClaw-native integration** (memory slot plugin)
+It is a **memory brain** for agents: a system that continuously captures interaction traces, turns them into structured experience, and makes that experience retrievable, filterable, and increasingly useful over time.
+
+The core idea is simple:
+
+- an agent should **remember**
+- memory should be shaped by **trajectory and experience**, not only static facts
+- retrieval should become **more adaptive over time**, not stay frozen at naive similarity top-k
+- the whole stack should be ready for future **continual learning** workflows
+
+If you want your agent to move from “has tools” to “has experience”, Memsense is the memory layer for that.
 
 ---
 
-## Core Capabilities
+## Why it matters
+
+Most agent memory systems stop at storing chunks and running vector search.
+Memsense is designed around a more lifelike model:
+
+- **Memory brain, not memory bucket**  
+  Treat memory as an active layer for recall, ranking, filtering, and reuse.
+
+- **Experience trajectory, not isolated snippets**  
+  Preserve conversation turns with `session_id`, `agent_id`, `user_id`, and source context so memory comes from actual agent history.
+
+- **Self-evolving retrieval**  
+  Retrieval quality improves through richer metadata, temporal semantics, reranking, and diversity-aware selection.
+
+- **Continual-learning ready foundation**  
+  Today it powers better memory recall; tomorrow it can support replay, offline tuning, preference adaptation, and longer-horizon learning loops.
+
+---
+
+## Core story
+
+Memsense is built around three product pillars:
+
+### 1. Biomimetic memory brain
+A layered memory system with:
+- online capture
+- async enrichment
+- temporal semantics
+- retrieval-time selection instead of raw nearest-neighbor dumping
+
+### 2. Experience trajectory and self-evolution
+Each interaction becomes part of the agent’s experience trail:
+- automatic per-turn QA capture
+- tags and `memory_kind` added asynchronously
+- session / agent / user identity retained for future filtering and learning
+
+### 3. Continual learning compatibility
+Memsense already stores the kind of data foundation continual learning needs:
+- structured historical traces
+- separable identity dimensions
+- replayable chunks
+- operational visibility through dashboard and test surfaces
+
+---
+
+## Why Memsense is different
+
+Memsense is built for real agent workloads:
+
+- **Long-term memory that scales** with PostgreSQL + pgvector
+- **Better retrieval quality** with candidate recall + temporal rerank + diversity selection
+- **Automatic online capture** so useful experience is not lost turn by turn
+- **Reliable async enrichment** with embedding jobs, tag jobs, retry, and DLQ
+- **Operational visibility** through a session-first dashboard and RBAC
+- **OpenClaw-native integration** as a memory slot plugin
+
+---
+
+## What you get today
 
 - OpenClaw plugin id: `memsense`
 - Exposed tools:
   - `memory_search`
   - `memory_fetch_recent`
-- QA chunk write path:
-  - automatic per-turn capture on the online conversation path
-  - every saved QA chunk is followed by async embedding + async tagging jobs
-  - `memory_save` is no longer exposed to the model tool surface
+- Automatic per-turn QA capture on the online path
+- Async embedding and async tagging after each saved chunk
+- `memory_save` retained for internal maintenance / backfill / debug, not the model-facing tool surface
+- Dashboard for overview, list, detail, test, raw, and model-facing inspection
 
 ---
 
-## Architecture (at a glance)
+## Architecture at a glance
 
 - **Plugin gateway** (`index.ts`) for OpenClaw tools and online auto-capture
 - **Backend API** (`src/server`) for memory services
@@ -53,9 +116,26 @@ Memsense is built for real agent workloads:
 - **Worker** (`src/worker`) for embedding + async tagging jobs (retry/DLQ)
 - **Dashboard** (`/dashboard`) with token-based RBAC
 
+```mermaid
+flowchart LR
+    A[OpenClaw Agent] --> B[Auto-capture per turn]
+    B --> C[memory_chunks]
+    C --> D[embedding_jobs]
+    C --> E[tag_jobs]
+    D --> F[Embedding Worker]
+    E --> G[Tag Worker]
+    F --> H[(PostgreSQL + pgvector)]
+    G --> H
+    H --> I[Candidate Recall]
+    I --> J[Temporal Rerank]
+    J --> K[Diversity Selection]
+    K --> L[memory_search / memory_fetch_recent]
+    H --> M[Dashboard]
+```
+
 ### Identity fields carried in storage
 
-Each QA chunk should preserve identity dimensions for isolation and filtering:
+Each QA chunk preserves identity dimensions for isolation, filtering, and future learning workflows:
 
 - `session_id`
 - `agent_id`
@@ -65,6 +145,7 @@ This makes it possible to distinguish:
 - different sessions of the same agent
 - different agents serving the same user
 - global vs session-scoped retrieval views
+- future replay / analysis / continual-learning pipelines
 
 ---
 
