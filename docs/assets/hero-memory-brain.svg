@@ -1,0 +1,54 @@
+<svg width="1200" height="640" viewBox="0 0 1200 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="120" y1="80" x2="1080" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5F3FF"/>
+      <stop offset="0.45" stop-color="#EEF2FF"/>
+      <stop offset="1" stop-color="#ECFEFF"/>
+    </linearGradient>
+    <linearGradient id="orb" x1="420" y1="160" x2="780" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="0.5" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+    <filter id="blur1" x="0" y="0" width="1200" height="640" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="40"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="640" rx="32" fill="url(#bg)"/>
+  <g filter="url(#blur1)" opacity="0.35">
+    <circle cx="210" cy="140" r="90" fill="#C4B5FD"/>
+    <circle cx="1010" cy="150" r="80" fill="#67E8F9"/>
+    <circle cx="980" cy="500" r="110" fill="#A78BFA"/>
+  </g>
+  <rect x="72" y="92" width="360" height="456" rx="28" fill="white" fill-opacity="0.72"/>
+  <text x="108" y="170" fill="#111827" font-size="56" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">From agent history</text>
+  <text x="108" y="235" fill="#111827" font-size="56" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">to living memory</text>
+  <text x="108" y="302" fill="#4B5563" font-size="24" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">Capture experience.</text>
+  <text x="108" y="338" fill="#4B5563" font-size="24" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">Preserve trajectory.</text>
+  <text x="108" y="374" fill="#4B5563" font-size="24" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">Improve recall over time.</text>
+  <rect x="108" y="424" width="188" height="52" rx="26" fill="#111827"/>
+  <text x="138" y="458" fill="white" font-size="22" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="600">memory brain</text>
+  <g>
+    <circle cx="770" cy="320" r="134" fill="url(#orb)" opacity="0.16"/>
+    <circle cx="770" cy="320" r="92" fill="url(#orb)" opacity="0.24"/>
+    <circle cx="770" cy="320" r="58" fill="url(#orb)"/>
+    <circle cx="638" cy="246" r="14" fill="#8B5CF6"/>
+    <circle cx="692" cy="184" r="12" fill="#A78BFA"/>
+    <circle cx="838" cy="176" r="12" fill="#22D3EE"/>
+    <circle cx="914" cy="244" r="14" fill="#6366F1"/>
+    <circle cx="922" cy="394" r="14" fill="#22D3EE"/>
+    <circle cx="838" cy="468" r="12" fill="#8B5CF6"/>
+    <circle cx="696" cy="466" r="12" fill="#6366F1"/>
+    <circle cx="626" cy="388" r="14" fill="#A78BFA"/>
+    <path d="M650 250L722 284M705 190L748 266M834 186L792 265M900 246L818 287M894 392L820 350M836 458L790 374M700 458L746 374M638 388L720 350" stroke="#6366F1" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+    <path d="M722 292L748 304L770 276L792 304L818 292L806 328L826 348L788 348L770 378L752 348L714 348L734 328L722 292Z" fill="white" fill-opacity="0.94"/>
+  </g>
+  <g opacity="0.88">
+    <rect x="908" y="86" width="212" height="88" rx="22" fill="white" fill-opacity="0.86"/>
+    <text x="942" y="126" fill="#111827" font-size="22" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">captures turns</text>
+    <text x="942" y="152" fill="#6B7280" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">history → memory</text>
+    <rect x="892" y="466" width="228" height="88" rx="22" fill="white" fill-opacity="0.86"/>
+    <text x="928" y="506" fill="#111827" font-size="22" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">replays experience</text>
+    <text x="928" y="532" fill="#6B7280" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">memory → learning</text>
+  </g>
+</svg>

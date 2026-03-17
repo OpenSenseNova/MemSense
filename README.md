@@ -18,6 +18,16 @@
 
 </div>
 
+<p align="center">
+  <img alt="Memsense hero" src="docs/assets/hero-memory-brain.svg" width="100%" />
+</p>
+
+<p align="center">
+  <img alt="Trajectory" src="docs/assets/card-trajectory.svg" width="32%" />
+  <img alt="Recall" src="docs/assets/card-recall.svg" width="32%" />
+  <img alt="Learning" src="docs/assets/card-learning.svg" width="32%" />
+</p>
+
 ---
 
 ## Why Memsense
