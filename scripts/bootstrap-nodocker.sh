@@ -19,6 +19,36 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
+# Check PostgreSQL
+if ! command -v psql >/dev/null 2>&1; then
+  echo "[memsense] PostgreSQL not found, installing..."
+  if command -v brew >/dev/null 2>&1; then
+    brew install postgresql@17
+    brew services start postgresql@17
+    brew link --overwrite postgresql@17
+  else
+    echo "[memsense] Please install PostgreSQL 17+ manually"
+    exit 1
+  fi
+fi
+
+# Check pgvector
+if ! psql -d postgres -c "SELECT 1" >/dev/null 2>&1; then
+  echo "[memsense] PostgreSQL not running, starting..."
+  brew services start postgresql@17 || brew services start postgresql
+fi
+
+if ! psql -d postgres -tAc "SELECT 1 FROM pg_available_extensions WHERE name='vector'" 2>/dev/null | grep -q 1; then
+  echo "[memsense] pgvector not found, installing..."
+  if command -v brew >/dev/null 2>&1; then
+    brew install pgvector
+    brew services restart postgresql@17 || brew services restart postgresql
+  else
+    echo "[memsense] Please install pgvector manually"
+    exit 1
+  fi
+fi
+
 upsert_env() {
   local key="$1"
   local value="$2"
@@ -68,6 +98,12 @@ fi
 echo "[memsense] using database: $(grep '^MEMSENSE_DATABASE_URL=' .env | cut -d= -f2-)"
 if [[ "$STRATEGY" == "local" ]]; then
   echo "[memsense] using local embedding endpoint: $(grep '^MEMSENSE_BGE_ENDPOINT=' .env | cut -d= -f2-)"
+fi
+
+# Create database if not exists
+if ! psql -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw memsense; then
+  echo "[memsense] creating database memsense..."
+  createdb memsense
 fi
 
 set -a

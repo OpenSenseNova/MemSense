@@ -67,14 +67,28 @@ const sessionPendingAutoSave = new Map<string, { user: string; tags: string[]; t
 const sessionInjected = new Set<string>();
 const triggerPipeline = new TriggerPipeline();
 
+function isMeaningfulQuery(text: string): boolean {
+  const t = String(text || "").trim();
+  if (!t) return false;
+  if (t.length < 4) return false;
+  if (/^(hi|hello|hey|你好|在吗|在？|在吗？|谢谢|thanks|ok|好的|嗯嗯)$/i.test(t)) return false;
+  if (/^[?？!！。.，,\s]+$/.test(t)) return false;
+  return true;
+}
+
+function formatMemoryInjection(chunks: any[]): string {
+  if (!chunks || chunks.length === 0) return "";
+  const formatted = chunks.map((c: any) => c?.text || "").filter(Boolean).join("\n\n");
+  if (!formatted) return "";
+  return `<relevant_context>\n${formatted}\n</relevant_context>`;
+}
 
 function stripMessageEnvelope(text: string): string {
   let t = String(text || "").trim();
   t = t.replace(/^Sender \(untrusted metadata\):\s*```json\s*[\s\S]*?```\s*/i, "");
   t = t.replace(/^```json\s*[\s\S]*?```\s*/i, "");
   t = t.replace(/^\[[^\]]*GMT[+-]\d+\]\s*/im, "");
-  t = t.replace(/^(Sender|Quoted message|Forwarded|metadata)\s*:\s*[\s\S]*?
-(?=\S)/i, "");
+  t = t.replace(/^(Sender|Quoted message|Forwarded|metadata)\s*:\s*[\s\S]*?(?=\S)/i, "");
   return t.trim();
 }
 
@@ -82,27 +96,11 @@ function stripStructuredNoise(text: string): string {
   let t = stripMessageEnvelope(String(text || ""));
   t = t.replace(/```(?:json)?[\s\S]*?```/gi, " ");
   t = t.replace(/\{\s*"(?:role|type|agent|session|tool|content)"[\s\S]*?\}/gi, " ");
-  t = t.replace(/(^|
-)\s*(agent|session|tool|role|run_id|session_id|agent_id)\s*:\s.*$/gim, " ");
+  t = t.replace(/(^|\n)\s*(agent|session|tool|role|run_id|session_id|agent_id)\s*:\s.*$/gim, " ");
   t = t.replace(/(session_id|agent_id|run_id|tool_name)\s*=\s*[^\s]+/gi, " ");
   t = t.replace(/<\/?[a-z][^>]*>/gi, " ");
   t = t.replace(/[ 	]+/g, " ");
-  t = t.replace(/
-{3,}/g, "
-
-");
-  return t.trim();
-}
-
-function normalizeNaturalText(text: string): string {
-  const t = stripStructuredNoise(text)
-    .split("
-")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !/^(type|role|agent|session|tool)\s*[:=]/i.test(line))
-    .join("
-");
+  t = t.replace(/\n{3,}/g, "\n\n");
   return t.trim();
 }
 
@@ -122,28 +120,6 @@ function contentToText(content: any): string {
   }
   if (typeof content?.text === "string") return normalizeNaturalText(content.text);
   return "";
-}
-
-function buildQaFromHistory(messages: any[]): Array<{ user: string; assistant: string; timestamp: number }> {
-  const out: Array<{ user: string; assistant: string; timestamp: number }> = [];
-  let pendingUser: { text: string; ts: number } | null = null;
-  for (const m of messages || []) {
-    const role = String(m?.role || "");
-    const text = contentToText(m?.content || m?.text || "");
-    const ts = Number(m?.timestamp || Date.now());
-    if (!text) continue;
-    if (role === "user") {
-      if (pendingUser) out.push({ user: pendingUser.text, assistant: "", timestamp: pendingUser.ts });
-      pendingUser = { text, ts };
-      continue;
-    }
-    if (role === "assistant" && pendingUser) {
-      out.push({ user: pendingUser.text, assistant: text, timestamp: ts });
-      pendingUser = null;
-    }
-  }
-  if (pendingUser) out.push({ user: pendingUser.text, assistant: "", timestamp: pendingUser.ts });
-  return out;
 }
 
 const WriteSchema = {
