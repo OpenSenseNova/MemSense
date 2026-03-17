@@ -2,11 +2,10 @@
 
 # Memsense
 
-<p><strong>From agent history to living memory</strong></p>
-<p>Experience, recall, and continual-learning foundations for agents</p>
-
 <p align="center">
-  <img alt="Memsense theme banner" src="docs/assets/theme-banner.svg" width="92%" />
+  <picture>
+    <img alt="From agent history to living memory" src="docs/assets/theme-banner.svg" width="92%" />
+  </picture>
 </p>
 
 <p>
