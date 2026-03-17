@@ -3,7 +3,7 @@
 # Memsense
 
 <p><strong>From agent history to living memory</strong></p>
-<p>A memory brain for OpenClaw agents</p>
+<p>Experience, recall, and continual-learning foundations for agents</p>
 
 <p>
   <img alt="version" src="https://img.shields.io/badge/version-0.1.0-4f46e5" />
