@@ -107,7 +107,8 @@ http://127.0.0.1:8787/dashboard?token=demo
 ## Learn more
 
 - Docs hub: [`docs/README.md`](docs/README.md)
-- Retrieval logic: [`docs/features/embedding-search.md`](docs/features/embedding-search.md)
+- Architecture: [`docs/features/architecture-overview.md`](docs/features/architecture-overview.md)
+- Retrieval algorithm: [`docs/features/retrieval-algorithm.md`](docs/features/retrieval-algorithm.md)
 - Dashboard / RBAC: [`docs/features/dashboard-rbac.md`](docs/features/dashboard-rbac.md)
 - Worker reliability: [`docs/features/worker-retry-dlq.md`](docs/features/worker-retry-dlq.md)
 

@@ -28,8 +28,14 @@ Start with these in order:
 
 These docs explain the main technical ideas behind Memsense.
 
+- [`features/architecture-overview.md`](features/architecture-overview.md)  
+  The full system flow: capture, enrichment, retrieval, selection, dashboard, and data movement.
+
+- [`features/retrieval-algorithm.md`](features/retrieval-algorithm.md)  
+  The ranking logic: dual recall, temporal scoring, hybrid weighting, and diversity-aware selection.
+
 - [`features/embedding-search.md`](features/embedding-search.md)  
-  How memory retrieval works today: storage, embeddings, vector search, lexical signal, and hybrid rerank.
+  A compact explanation of storage, embeddings, vector search, lexical signal, and hybrid rerank.
 
 - [`features/worker-retry-dlq.md`](features/worker-retry-dlq.md)  
   How async enrichment works: job queueing, retries, and dead-letter handling.
@@ -79,7 +85,9 @@ If you want to study Memsense more deeply, focus on these themes:
 - [`features/no-docker-quickstart.md`](features/no-docker-quickstart.md)
 - [`features/local-bge-oneclick.md`](features/local-bge-oneclick.md)
 
-### Retrieval / memory logic
+### Architecture / logic
+- [`features/architecture-overview.md`](features/architecture-overview.md)
+- [`features/retrieval-algorithm.md`](features/retrieval-algorithm.md)
 - [`features/embedding-search.md`](features/embedding-search.md)
 
 ### Operations / reliability
