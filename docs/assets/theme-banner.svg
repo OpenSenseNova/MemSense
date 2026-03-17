@@ -1,0 +1,45 @@
+<svg width="1200" height="220" viewBox="0 0 1200 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5F3FF"/>
+      <stop offset="0.5" stop-color="#EEF2FF"/>
+      <stop offset="1" stop-color="#ECFEFF"/>
+    </linearGradient>
+    <linearGradient id="line" x1="730" y1="58" x2="980" y2="162" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="0.5" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="220" rx="28" fill="url(#bg)"/>
+  <circle cx="120" cy="58" r="26" fill="#DDD6FE"/>
+  <circle cx="1080" cy="54" r="22" fill="#CFFAFE"/>
+  <circle cx="1060" cy="176" r="34" fill="#E9D5FF" opacity="0.9"/>
+
+  <text x="56" y="88" fill="#111827" font-size="42" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">From agent history to living memory</text>
+  <text x="56" y="134" fill="#4B5563" font-size="22" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">Capture experience · preserve trajectory · improve recall · get ready to learn</text>
+
+  <g>
+    <circle cx="840" cy="110" r="54" fill="url(#line)" opacity="0.16"/>
+    <circle cx="840" cy="110" r="34" fill="url(#line)" opacity="0.28"/>
+    <circle cx="840" cy="110" r="18" fill="url(#line)"/>
+
+    <circle cx="744" cy="84" r="8" fill="#8B5CF6"/>
+    <circle cx="792" cy="58" r="7" fill="#A78BFA"/>
+    <circle cx="888" cy="58" r="7" fill="#22D3EE"/>
+    <circle cx="936" cy="84" r="8" fill="#6366F1"/>
+    <circle cx="936" cy="136" r="8" fill="#22D3EE"/>
+    <circle cx="888" cy="162" r="7" fill="#8B5CF6"/>
+    <circle cx="792" cy="162" r="7" fill="#6366F1"/>
+    <circle cx="744" cy="136" r="8" fill="#A78BFA"/>
+
+    <path d="M752 88L810 102M798 62L826 92M882 62L854 92M928 88L870 102M928 132L870 118M882 158L854 128M798 158L826 128M752 132L810 118" stroke="#6366F1" stroke-width="4.5" stroke-linecap="round" opacity="0.72"/>
+  </g>
+
+  <g opacity="0.95">
+    <rect x="990" y="72" width="134" height="34" rx="17" fill="white" fill-opacity="0.9"/>
+    <text x="1015" y="94" fill="#111827" font-size="16" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">memory brain</text>
+    <rect x="990" y="116" width="122" height="34" rx="17" fill="white" fill-opacity="0.9"/>
+    <text x="1015" y="138" fill="#111827" font-size="16" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">self-evolve</text>
+  </g>
+</svg>

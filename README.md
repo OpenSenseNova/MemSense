@@ -5,6 +5,10 @@
 <p><strong>From agent history to living memory</strong></p>
 <p>Experience, recall, and continual-learning foundations for agents</p>
 
+<p align="center">
+  <img alt="Memsense theme banner" src="docs/assets/theme-banner.svg" width="92%" />
+</p>
+
 <p>
   <img alt="version" src="https://img.shields.io/badge/version-0.1.0-4f46e5" />
   <img alt="status" src="https://img.shields.io/badge/status-beta-0ea5e9" />
