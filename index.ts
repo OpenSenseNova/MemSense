@@ -88,7 +88,7 @@ function isMeaningfulQuery(text: string): boolean {
 
 function formatMemoryInjection(chunks: any[]): string {
   if (!chunks || chunks.length === 0) return "";
-  const formatted = chunks.map((c: any) => c?.text || "").filter(Boolean).join("\n\n");
+  const formatted = chunks.map((c: any) => c?.content || c?.text || "").filter(Boolean).join("\n\n");
   if (!formatted) return "";
   return `<relevant_context>\n${formatted}\n</relevant_context>`;
 }
@@ -169,25 +169,38 @@ export default {
     });
 
     api.on("before_prompt_build", async (event: any, ctx: any) => {
+      console.log("[memsense] before_prompt_build triggered");
       const sid = ctx?.sessionId;
-      if (!sid || sessionInjected.has(String(sid))) return;
+      if (!sid || sessionInjected.has(String(sid))) {
+        console.log("[memsense] skipping - no sid or already injected");
+        return;
+      }
       const prompt = normalizeNaturalText(String(event?.prompt || ""));
-      if (!isMeaningfulQuery(prompt)) return;
+      console.log("[memsense] normalized prompt:", prompt.slice(0, 100));
+      if (!isMeaningfulQuery(prompt)) {
+        console.log("[memsense] query not meaningful, skipping");
+        return;
+      }
       try {
+        console.log("[memsense] calling search API...");
         const result = await callApi("/v1/memory/search", {
           tenant_id: "default",
           scope: "user",
-          session_id: String(sid),
-          agent_id: String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
           user_id: ctx?.userId || event?.userId || null,
           query: prompt,
           top_k: 5,
         });
+        console.log("[memsense] search returned", result?.chunks?.length || 0, "chunks");
         const injection = formatMemoryInjection(result?.chunks || []);
         sessionInjected.add(String(sid));
-        if (!injection) return;
+        if (!injection) {
+          console.log("[memsense] no injection content");
+          return;
+        }
+        console.log("[memsense] injecting", injection.length, "chars");
         return { prependContext: injection };
-      } catch {
+      } catch (e) {
+        console.error("[memsense] search failed:", e);
         sessionInjected.add(String(sid));
         return;
       }
