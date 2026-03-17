@@ -1,4 +1,0 @@
-=== TOTAL USAGE ===
-input_tokens: 280
-output_tokens: 421
-total_tokens: 85116

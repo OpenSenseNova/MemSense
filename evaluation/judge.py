@@ -6,7 +6,7 @@ Usage:
     uv run python judge.py output/answers.txt.json --output output/grades.json
     uv run python judge.py output/qa.memsense_test_0.1.jsonl \
         --base-url https://ark.cn-beijing.volces.com/api/v3 \
-        --token "" \
+        --token 57c538e1-bcc6-4227-8436-346cd02cafee \
         --model doubao-seed-2-0-mini-260215 \
         --output output/grades.json \
         --concurrency 5
