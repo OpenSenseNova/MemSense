@@ -193,8 +193,27 @@
     </div>
 
     <div class="card search-card">
-      <div class="search-row" style="margin-bottom:8px"><strong>Tool Playground</strong><span class="hint">恢复 dashboard 内直接验证 memory_search / memory_fetch_recent</span></div>
+      <div class="search-row" style="margin-bottom:8px"><strong>Tool Playground</strong><span class="hint">展示原始 API JSON、返回给模型的包装结果，以及真实 prompt 注入预览</span></div>
       <div class="playground-grid">
+        <div class="card">
+          <div class="section-title">Prompt Injection Preview</div>
+          <div class="search-row" style="margin-top:10px">
+            <input id="previewTenant" class="search-input" placeholder="tenant_id" value="default" />
+            <input id="previewScope" class="search-input" placeholder="scope" value="user" />
+          </div>
+          <div class="search-row" style="margin-top:10px">
+            <input id="previewSessionId" class="search-input" placeholder="session_id" value="demo-session" />
+            <input id="previewAgentId" class="search-input" placeholder="agent_id" value="memsense" />
+          </div>
+          <div class="search-row" style="margin-top:10px">
+            <input id="previewUserId" class="search-input" placeholder="user_id" value="demo-user" />
+            <div class="limit">top_k <input id="previewTopK" type="number" min="1" max="20" value="5" /></div>
+          </div>
+          <div class="search-row" style="margin-top:10px">
+            <input id="previewPrompt" class="search-input" placeholder="当前用户 prompt" value="苹果生态相关偏好是什么？" />
+            <button class="btn" onclick="runPromptPreview()">Run Preview</button>
+          </div>
+        </div>
         <div class="card">
           <div class="section-title">memory_search</div>
           <div class="search-row" style="margin-top:10px">
@@ -202,6 +221,11 @@
             <input id="toolScope" class="search-input" placeholder="scope" value="user" />
           </div>
           <div class="search-row" style="margin-top:10px">
+            <input id="toolSessionId" class="search-input" placeholder="session_id（可选）" value="demo-session" />
+            <input id="toolAgentId" class="search-input" placeholder="agent_id（可选）" value="memsense" />
+          </div>
+          <div class="search-row" style="margin-top:10px">
+            <input id="toolUserId" class="search-input" placeholder="user_id（可选）" value="demo-user" />
             <input id="toolQuery" class="search-input" placeholder="query" value="苹果" />
             <div class="limit">top_k <input id="toolTopK" type="number" min="1" max="20" value="8" /></div>
           </div>
@@ -216,6 +240,11 @@
             <input id="toolRecentScope" class="search-input" placeholder="scope" value="user" />
           </div>
           <div class="search-row" style="margin-top:10px">
+            <input id="toolRecentSessionId" class="search-input" placeholder="session_id（可选）" value="demo-session" />
+            <input id="toolRecentAgentId" class="search-input" placeholder="agent_id（可选）" value="memsense" />
+          </div>
+          <div class="search-row" style="margin-top:10px">
+            <input id="toolRecentUserId" class="search-input" placeholder="user_id（可选）" value="demo-user" />
             <div class="limit">limit <input id="toolRecentLimit" type="number" min="1" max="100" value="10" /></div>
             <button class="btn secondary" onclick="runToolFetchRecent()">Run memory_fetch_recent</button>
           </div>
@@ -418,6 +447,26 @@
       return `<span class="tool-value">${escapeHtml(String(value))}</span>`;
     }
 
+    function toolPayloadEnvelope(data, traceId = 'demo_trace') {
+      return {
+        ok: true,
+        degraded: false,
+        trace_id: traceId,
+        data,
+      };
+    }
+
+    function currentPromptInjectionFromSearchApi(searchApiJson) {
+      const chunks = searchApiJson?.data?.chunks || [];
+      const formatted = chunks.map((c) => c?.text || '').filter(Boolean).join('\n\n');
+      if (!formatted) return '';
+      return `<relevant_context>\n${formatted}\n</relevant_context>`;
+    }
+
+    function prettyJson(value) {
+      return JSON.stringify(value, null, 2);
+    }
+
     function setToolResult(data) {
       const root = byId('toolResult');
       if (typeof data === 'string') {
@@ -427,17 +476,61 @@
       root.innerHTML = renderToolValue(data, 'result');
     }
 
+    async function runPromptPreview() {
+      try {
+        const payload = {
+          tenant_id: byId('previewTenant').value || 'default',
+          scope: byId('previewScope').value || 'user',
+          session_id: byId('previewSessionId').value || null,
+          agent_id: byId('previewAgentId').value || null,
+          user_id: byId('previewUserId').value || null,
+          query: byId('previewPrompt').value || '',
+          top_k: Number(byId('previewTopK').value || 5),
+        };
+        const r = await fetch('/v1/memory/search', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+        const j = await r.json();
+        const promptPreview = currentPromptInjectionFromSearchApi(j);
+        setToolResult({
+          kind: 'prompt_injection_preview',
+          current_plugin_strategy: {
+            source: 'index.ts -> before_prompt_build -> formatMemoryInjection',
+            search_request_payload: payload,
+            assembly_rule: 'chunks.map(c => c?.text || "").filter(Boolean).join("\\n\\n")，再包成 <relevant_context>...</relevant_context>',
+            note: '这是当前插件真实在用的拼接逻辑，不是理想化示意。',
+          },
+          raw_search_api_json: j,
+          model_prompt_fragment_template: '<relevant_context>\n{{joined_chunk_texts}}\n</relevant_context>',
+          model_prompt_fragment_actual: promptPreview || '(empty: 当前 search 返回里没有可用于 c.text 的字段，因此按现逻辑不会注入任何内容)',
+        });
+      } catch (e) {
+        setToolResult(String(e?.message || e));
+      }
+    }
+
     async function runToolSearch() {
       try {
         const payload = {
           tenant_id: byId('toolTenant').value || 'default',
           scope: byId('toolScope').value || 'user',
+          session_id: byId('toolSessionId').value || null,
+          agent_id: byId('toolAgentId').value || null,
+          user_id: byId('toolUserId').value || null,
           query: byId('toolQuery').value || '',
           top_k: Number(byId('toolTopK').value || 8),
         };
         const r = await fetch('/v1/memory/search', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
         const j = await r.json();
-        setToolResult(j);
+        setToolResult({
+          kind: 'tool_preview',
+          tool: 'memory_search',
+          request_payload_template: payload,
+          raw_api_json: j,
+          model_visible_tool_result_strategy: {
+            source: 'index.ts -> registerTool(memory_search) -> ok({ chunks }, traceId)',
+            assembly_rule: '把后端 /v1/memory/search 的 data 取出后，包装成 { ok, degraded, trace_id, data: { chunks } }，再 JSON.stringify 返回给模型',
+          },
+          model_visible_tool_result_template: prettyJson(toolPayloadEnvelope({ chunks: j?.data }, 'search_demo_trace')),
+        });
       } catch (e) {
         setToolResult(String(e?.message || e));
       }
@@ -448,11 +541,24 @@
         const payload = {
           tenant_id: byId('toolRecentTenant').value || 'default',
           scope: byId('toolRecentScope').value || 'user',
+          session_id: byId('toolRecentSessionId').value || null,
+          agent_id: byId('toolRecentAgentId').value || null,
+          user_id: byId('toolRecentUserId').value || null,
           limit: Number(byId('toolRecentLimit').value || 10),
         };
         const r = await fetch('/v1/memory/fetch_recent', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
         const j = await r.json();
-        setToolResult(j);
+        setToolResult({
+          kind: 'tool_preview',
+          tool: 'memory_fetch_recent',
+          request_payload_template: payload,
+          raw_api_json: j,
+          model_visible_tool_result_strategy: {
+            source: 'index.ts -> registerTool(memory_fetch_recent) -> ok(chunksResp, traceId)',
+            assembly_rule: '把后端 /v1/memory/fetch_recent 的 data 原样包装成 { ok, degraded, trace_id, data }，再 JSON.stringify 返回给模型',
+          },
+          model_visible_tool_result_template: prettyJson(toolPayloadEnvelope(j?.data, 'fetch_recent_demo_trace')),
+        });
       } catch (e) {
         setToolResult(String(e?.message || e));
       }

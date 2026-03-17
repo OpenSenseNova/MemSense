@@ -1,7 +1,7 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 
 import { TriggerPipeline } from "./src/trigger/trigger-pipeline.js";
-import { normalizeNaturalText, buildQaFromHistory } from "./src/capture/message-normalize.js";
+import { normalizeNaturalText, buildQaFromHistory, contentToText } from "./src/capture/message-normalize.js";
 import { buildCanonicalQaJson, canonicalizeUserText, selectFinalAssistantText } from "./src/capture/canonical-qa.js";
 const MEMSENSE_API_URL = process.env.MEMSENSE_API_URL || "http://127.0.0.1:8787";
 
@@ -67,6 +67,16 @@ const sessionPendingAutoSave = new Map<string, { user: string; tags: string[]; t
 const sessionInjected = new Set<string>();
 const triggerPipeline = new TriggerPipeline();
 
+function shouldSkipAutoCapture(sessionId: unknown, ctx: any, event: any) {
+  const sid = String(sessionId || '');
+  const agentId = String(ctx?.agentId || event?.agentId || '').trim();
+  if (!sid) return true;
+  if (sid === 'memsense-tagger') return true;
+  if (sid.startsWith('memsense-internal:')) return true;
+  if (agentId === 'memsense-tagger') return true;
+  return false;
+}
+
 function isMeaningfulQuery(text: string): boolean {
   const t = String(text || "").trim();
   if (!t) return false;
@@ -108,30 +118,34 @@ export default {
   register(api: OpenClawPluginApi) {
     api.on("llm_input", async (event: any, ctx: any) => {
       const sid = ctx?.sessionId || event?.sessionId;
-      if (!sid) return;
+      if (shouldSkipAutoCapture(sid, ctx, event)) return;
 
       const prompt = canonicalizeUserText(String(event?.prompt || ""));
+      if (!prompt) return;
       const decision = triggerPipeline.decide(prompt);
-      if (decision.shouldSave) {
-        sessionPendingAutoSave.set(String(sid), {
-          user: prompt,
-          tags: decision.tags || [],
-          taskTag: decision.tags?.[0] || null,
-          source: 'session_auto',
-          agentId: String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
-          userId: ctx?.userId || event?.userId || null,
-        });
-      }
+      sessionPendingAutoSave.set(String(sid), {
+        user: prompt,
+        tags: decision.tags || [],
+        taskTag: decision.tags?.[0] || null,
+        source: 'session_auto',
+        agentId: String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
+        userId: ctx?.userId || event?.userId || null,
+      });
     });
 
     api.on("llm_output", async (event: any, ctx: any) => {
       const sid = ctx?.sessionId || event?.sessionId;
-      if (!sid) return;
+      if (shouldSkipAutoCapture(sid, ctx, event)) return;
       const pending = sessionPendingAutoSave.get(String(sid));
       if (!pending) return;
       try {
-        const assistant = selectFinalAssistantText(Array.isArray(event?.assistantTexts) ? event.assistantTexts : []);
-        if (!assistant) return;
+        const fromAssistantTexts = selectFinalAssistantText(Array.isArray(event?.assistantTexts) ? event.assistantTexts : []);
+        const fromLastAssistant = contentToText(event?.lastAssistant?.content || event?.lastAssistant?.text || '');
+        const assistant = fromAssistantTexts || fromLastAssistant;
+        if (!assistant) {
+          console.warn('[memsense] auto-save skipped: empty assistant output', { sessionId: String(sid) });
+          return;
+        }
         await callApi("/v1/memory/save", {
           tenant_id: "default",
           scope: "user",
@@ -147,8 +161,11 @@ export default {
           score: 0.5,
           confidence: 0.7,
         });
-      } catch {}
-      sessionPendingAutoSave.delete(String(sid));
+      } catch (e) {
+        console.error('[memsense] auto-save failed', e);
+      } finally {
+        sessionPendingAutoSave.delete(String(sid));
+      }
     });
 
     api.on("before_prompt_build", async (event: any, ctx: any) => {
@@ -160,6 +177,9 @@ export default {
         const result = await callApi("/v1/memory/search", {
           tenant_id: "default",
           scope: "user",
+          session_id: String(sid),
+          agent_id: String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
+          user_id: ctx?.userId || event?.userId || null,
           query: prompt,
           top_k: 5,
         });
