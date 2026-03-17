@@ -63,8 +63,7 @@ function fail(errorCode: string, message: string, traceId: string, degraded = fa
   };
 }
 
-const sessionQaCache = new Map<string, Array<{ user: string; assistant: string; timestamp: number }>>();
-const sessionPendingAutoSave = new Map<string, { user: string; tags: string[]; taskTag?: string | null; source: string }>();
+const sessionPendingAutoSave = new Map<string, { user: string; tags: string[]; taskTag?: string | null; source: string; agentId?: string | null; userId?: string | null }>();
 const sessionInjected = new Set<string>();
 const triggerPipeline = new TriggerPipeline();
 
@@ -86,14 +85,6 @@ function formatMemoryInjection(chunks: any[]): string {
 
 
 
-const WriteSchema = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    k: { type: "integer", minimum: 1, maximum: 20 },
-  },
-};
-
 const RetrieveSchema = {
   type: "object",
   additionalProperties: false,
@@ -101,6 +92,7 @@ const RetrieveSchema = {
     tenant_id: { type: "string" },
     scope: { type: "string", enum: ["user", "team", "org", "task"] },
     session_id: { type: "string" },
+    agent_id: { type: "string" },
     user_id: { type: "string" },
     query: { type: "string" },
     top_k: { type: "integer", minimum: 1, maximum: 20 },
@@ -117,8 +109,6 @@ export default {
     api.on("llm_input", async (event: any, ctx: any) => {
       const sid = ctx?.sessionId || event?.sessionId;
       if (!sid) return;
-      const qa = buildQaFromHistory(Array.isArray(event?.historyMessages) ? event.historyMessages : []);
-      sessionQaCache.set(String(sid), qa.slice(-40));
 
       const prompt = canonicalizeUserText(String(event?.prompt || ""));
       const decision = triggerPipeline.decide(prompt);
@@ -127,7 +117,9 @@ export default {
           user: prompt,
           tags: decision.tags || [],
           taskTag: decision.tags?.[0] || null,
-          source: decision.source || 'rule',
+          source: 'session_auto',
+          agentId: String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
+          userId: ctx?.userId || event?.userId || null,
         });
       }
     });
@@ -139,15 +131,18 @@ export default {
       if (!pending) return;
       try {
         const assistant = selectFinalAssistantText(Array.isArray(event?.assistantTexts) ? event.assistantTexts : []);
+        if (!assistant) return;
         await callApi("/v1/memory/save", {
           tenant_id: "default",
           scope: "user",
           session_id: String(sid),
+          agent_id: pending.agentId || String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
+          user_id: pending.userId || ctx?.userId || event?.userId || null,
           content: buildCanonicalQaJson({ user: pending.user, assistant }),
           task_tag: pending.taskTag,
           tags: pending.tags,
           type_hint: "qa_chunk",
-          source: pending.source || "rule",
+          source: pending.source || "session_auto",
           timestamp: Date.now(),
           score: 0.5,
           confidence: 0.7,
@@ -178,48 +173,7 @@ export default {
       }
     });
 
-    // v1 aliases aligned with PRD naming: save/search/fetch_recent
-    api.registerTool((toolCtx) => ({
-      name: "memory_save",
-      label: "Memory Save",
-      description: "Save last k conversation chunks from current session history (QA-only)",
-      parameters: WriteSchema,
-      async execute(_toolCallId, params: any) {
-        const traceId = withTrace("save");
-        try {
-          const sid = toolCtx?.sessionId;
-          if (!sid) return fail("SAVE_FAILED", "sessionId not available", traceId);
-          const k = Number(params?.k ?? 5);
-          const qa = sessionQaCache.get(String(sid)) || [];
-          const selected = qa.slice(-k);
-          if (!selected.length) {
-            return ok({ accepted: false, reason: "no_session_history" }, traceId);
-          }
-
-          const chunks = [];
-          for (const item of selected) {
-            const content = JSON.parse(buildCanonicalQaJson({ user: item.user, assistant: item.assistant || "" }));
-            if (!content.assistant) continue;
-            const saved = await callApi("/v1/memory/save", {
-              tenant_id: "default",
-              scope: "user",
-              session_id: String(sid),
-              content: JSON.stringify(content),
-              type_hint: "qa_chunk",
-              source: "session",
-              timestamp: item.timestamp || Date.now(),
-              score: 0.5,
-              confidence: 0.7,
-            });
-            chunks.push(saved);
-          }
-          return ok({ accepted: true, k, saved_count: chunks.length, chunks }, traceId);
-        } catch (e: any) {
-          return fail("SAVE_FAILED", e?.message || "save failed", traceId);
-        }
-      },
-    }), { name: "memory_save" });
-
+    // v1 aliases aligned with PRD naming: search/fetch_recent
     api.registerTool({
       name: "memory_search",
       label: "Memory Search",
@@ -232,6 +186,7 @@ export default {
             tenant_id: params.tenant_id,
             scope: params.scope,
             session_id: params.session_id,
+            agent_id: params.agent_id,
             user_id: params.user_id,
             query: params.query,
             top_k: params.top_k ?? 8,
@@ -254,6 +209,7 @@ export default {
           tenant_id: { type: "string" },
           scope: { type: "string", enum: ["user", "team", "org", "task"] },
           session_id: { type: "string" },
+          agent_id: { type: "string" },
           user_id: { type: "string" },
           limit: { type: "integer", minimum: 1, maximum: 100 },
         },
@@ -266,6 +222,7 @@ export default {
             tenant_id: params.tenant_id,
             scope: params.scope,
             session_id: params.session_id,
+            agent_id: params.agent_id,
             user_id: params.user_id,
             limit: params.limit ?? 10,
           });

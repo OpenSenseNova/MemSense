@@ -3,7 +3,7 @@ export function getDashboardContract() {
     version: '2026-03-16',
     memoryList: {
       coreFields: ['memory_id', 'content', 'status', 'timestamp_ms'],
-      metaFields: ['memory_kind', 'tags', 'source', 'tenant_id', 'scope', 'user_id', 'session_id', 'score', 'confidence'],
+      metaFields: ['memory_kind', 'tags', 'source', 'tenant_id', 'scope', 'user_id', 'agent_id', 'session_id', 'score', 'confidence'],
       fieldTypes: {
         memory_id: 'text',
         content: 'text',
@@ -15,6 +15,7 @@ export function getDashboardContract() {
         tenant_id: 'text',
         scope: 'text',
         user_id: 'text',
+        agent_id: 'text',
         session_id: 'text',
         score: 'number',
         confidence: 'number',
@@ -30,6 +31,7 @@ export function getDashboardContract() {
         tenant_id: 'Tenant',
         scope: 'Scope',
         user_id: 'User',
+        agent_id: 'Agent',
         session_id: 'Session',
         score: 'Score',
         confidence: 'Confidence',

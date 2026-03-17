@@ -34,6 +34,11 @@ test('canonicalizeUserText removes sender envelope and timestamp', () => {
   assert.equal(canonicalizeUserText(raw), '继续做');
 });
 
+test('canonicalizeUserText removes system exec wrapper before user message', () => {
+  const raw = `System: [2026-03-17 16:00:57 GMT+8] Exec completed (tender-p, code 0) :: done\n\nSender (untrusted metadata):\n\`\`\`json\n{"id":"gateway-client"}\n\`\`\`\n\n[Tue 2026-03-17 16:01 GMT+8] 好的，继续`;
+  assert.equal(canonicalizeUserText(raw), '好的，继续');
+});
+
 test('selectFinalAssistantText skips filler progress text', () => {
   const out = selectFinalAssistantText(['我先看一下', '我直接查一下', '[[reply_to_current]] 最终结论：已经修好']);
   assert.equal(out, '最终结论：已经修好');

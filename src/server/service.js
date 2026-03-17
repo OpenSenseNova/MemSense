@@ -30,8 +30,8 @@ export async function saveChunk(input) {
   const memoryId = genMemoryId();
   const tags = JSON.stringify(input.tags || []);
   const sql = `INSERT INTO memory_chunks
-  (memory_id, tenant_id, scope, session_id, user_id, content, type_hint, tags, task_tag, source, score, confidence, timestamp_ms, memory_kind)
-  VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13,$14)
+  (memory_id, tenant_id, scope, session_id, agent_id, user_id, content, type_hint, tags, task_tag, source, score, confidence, timestamp_ms, memory_kind)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14,$15)
   RETURNING id, memory_id, timestamp_ms, score, memory_kind`;
   const qaContent = normalizeQaChunkContent(input.content);
 
@@ -40,12 +40,13 @@ export async function saveChunk(input) {
      WHERE tenant_id = $1
        AND scope = $2
        AND ($3::text IS NULL OR session_id = $3)
-       AND ($4::text IS NULL OR user_id = $4)
-       AND content = $5
-       AND timestamp_ms >= $6
+       AND ($4::text IS NULL OR agent_id = $4)
+       AND ($5::text IS NULL OR user_id = $5)
+       AND content = $6
+       AND timestamp_ms >= $7
      ORDER BY timestamp_ms DESC
      LIMIT 1`,
-    [input.tenant_id, input.scope, input.session_id || null, input.user_id || null, qaContent, timestamp - 10 * 60 * 1000],
+    [input.tenant_id, input.scope, input.session_id || null, input.agent_id || null, input.user_id || null, qaContent, timestamp - 10 * 60 * 1000],
   );
   if (dedupCheck.rows.length) {
     const ex = dedupCheck.rows[0];
@@ -57,12 +58,13 @@ export async function saveChunk(input) {
     input.tenant_id,
     input.scope,
     input.session_id || null,
+    input.agent_id || null,
     input.user_id || null,
     qaContent,
     'qa_chunk',
     tags,
     input.task_tag || null,
-    'session',
+    input.source || 'session_auto',
     0.5,
     0.7,
     timestamp,
@@ -88,21 +90,22 @@ export async function saveChunk(input) {
   return { memory_id: row.memory_id, timestamp_ms: row.timestamp_ms, score: row.score, memory_kind: row.memory_kind };
 }
 
-export async function fetchRecent({ tenant_id, scope, session_id, user_id, limit = 10 }) {
-  const sql = `SELECT memory_id, content, tags, score, confidence, timestamp_ms, session_id, user_id, memory_kind
+export async function fetchRecent({ tenant_id, scope, session_id, agent_id, user_id, limit = 10 }) {
+  const sql = `SELECT memory_id, content, tags, score, confidence, timestamp_ms, session_id, agent_id, user_id, memory_kind
   FROM memory_chunks
   WHERE tenant_id = $1
     AND scope = $2
     AND ($3::text IS NULL OR session_id = $3)
-    AND ($4::text IS NULL OR user_id = $4)
+    AND ($4::text IS NULL OR agent_id = $4)
+    AND ($5::text IS NULL OR user_id = $5)
     AND status = 'active'
   ORDER BY timestamp_ms DESC
-  LIMIT $5`;
-  const r = await query(sql, [tenant_id, scope, session_id || null, user_id || null, Number(limit)]);
+  LIMIT $6`;
+  const r = await query(sql, [tenant_id, scope, session_id || null, agent_id || null, user_id || null, Number(limit)]);
   return r.rows;
 }
 
-export async function searchChunks({ tenant_id, scope, session_id, user_id, query_text, top_k = 8 }) {
+export async function searchChunks({ tenant_id, scope, session_id, agent_id, user_id, query_text, top_k = 8 }) {
   const q = String(query_text || '').trim();
   const qvec = await embedText(q);
   const qvecLiteral = toPgVectorLiteral(qvec);
@@ -110,7 +113,7 @@ export async function searchChunks({ tenant_id, scope, session_id, user_id, quer
   const lexicalLimit = Number(Math.max(top_k * 4, 16));
 
   const sql = `WITH filtered AS (
-    SELECT c.id, c.memory_id, c.content, c.tags, c.score, c.confidence, c.timestamp_ms, c.session_id, c.user_id,
+    SELECT c.id, c.memory_id, c.content, c.tags, c.score, c.confidence, c.timestamp_ms, c.session_id, c.agent_id, c.user_id,
            c.memory_kind, e.embedding,
            to_tsvector('simple', COALESCE(c.content, '')) AS tsv
     FROM memory_chunks c
@@ -118,21 +121,22 @@ export async function searchChunks({ tenant_id, scope, session_id, user_id, quer
     WHERE c.tenant_id = $1
       AND c.scope = $2
       AND ($3::text IS NULL OR c.session_id = $3)
-      AND ($4::text IS NULL OR c.user_id = $4)
+      AND ($4::text IS NULL OR c.agent_id = $4)
+      AND ($5::text IS NULL OR c.user_id = $5)
       AND c.status = 'active'
   ),
   qfts AS (
-    SELECT websearch_to_tsquery('simple', $6) AS tsq
+    SELECT websearch_to_tsquery('simple', $7) AS tsq
   ),
   vector_candidates AS (
     SELECT f.id,
-           COALESCE((1 - (f.embedding <=> $5::vector)), 0) AS vector_score,
+           COALESCE((1 - (f.embedding <=> $6::vector)), 0) AS vector_score,
            0::double precision AS lexical_raw,
            'vector'::text AS route
     FROM filtered f
     WHERE f.embedding IS NOT NULL
     ORDER BY vector_score DESC, f.score DESC, f.timestamp_ms DESC
-    LIMIT $7
+    LIMIT $8
   ),
   lexical_candidates AS (
     SELECT f.id,
@@ -145,7 +149,7 @@ export async function searchChunks({ tenant_id, scope, session_id, user_id, quer
       AND qfts.tsq <> ''::tsquery
       AND f.tsv @@ qfts.tsq
     ORDER BY lexical_raw DESC, f.score DESC, f.timestamp_ms DESC
-    LIMIT $8
+    LIMIT $9
   ),
   candidates AS (
     SELECT id,
@@ -162,7 +166,7 @@ export async function searchChunks({ tenant_id, scope, session_id, user_id, quer
   lexical_max AS (
     SELECT COALESCE(MAX(lexical_raw), 0) AS max_lexical_raw FROM candidates
   )
-  SELECT f.memory_id, f.content, f.tags, f.score, f.confidence, f.timestamp_ms, f.session_id, f.user_id,
+  SELECT f.memory_id, f.content, f.tags, f.score, f.confidence, f.timestamp_ms, f.session_id, f.agent_id, f.user_id,
          f.memory_kind, f.embedding::text AS embedding,
          COALESCE(c.vector_score, 0) AS vector_score,
          CASE
@@ -176,7 +180,7 @@ export async function searchChunks({ tenant_id, scope, session_id, user_id, quer
   ORDER BY GREATEST(COALESCE(c.vector_score, 0), CASE WHEN lm.max_lexical_raw > 0 THEN c.lexical_raw / lm.max_lexical_raw ELSE 0 END) DESC,
            f.score DESC,
            f.timestamp_ms DESC`;
-  const r = await query(sql, [tenant_id, scope, session_id || null, user_id || null, qvecLiteral, q, vectorLimit, lexicalLimit]);
+  const r = await query(sql, [tenant_id, scope, session_id || null, agent_id || null, user_id || null, qvecLiteral, q, vectorLimit, lexicalLimit]);
   return hybridRerank(r.rows, Number(top_k));
 }
 
@@ -246,6 +250,7 @@ function toDashboardMemoryRow(row) {
       scope: row.scope || '—',
       user_id: row.user_id || null,
       session_id: row.session_id || null,
+      agent_id: row.agent_id || null,
       score: row.score,
       confidence: row.confidence,
     },
@@ -262,6 +267,7 @@ export async function dashboardOverview({ q, limit = 20 }) {
     OR tenant_id ILIKE $1
     OR scope ILIKE $1
     OR COALESCE(session_id, '') ILIKE $1
+    OR COALESCE(agent_id, '') ILIKE $1
     OR COALESCE(user_id, '') ILIKE $1
     OR content ILIKE $1
     OR COALESCE(memory_kind, '') ILIKE $1
@@ -274,7 +280,7 @@ export async function dashboardOverview({ q, limit = 20 }) {
   const activeQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'active'`, [search]);
   const deletedQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'deleted'`, [search]);
   const latestQ = await query(
-    `SELECT memory_id, tenant_id, scope, session_id, user_id, content, memory_kind, tags, score, confidence, source, timestamp_ms, status
+    `SELECT memory_id, tenant_id, scope, session_id, agent_id, user_id, content, memory_kind, tags, score, confidence, source, timestamp_ms, status
      FROM memory_chunks ${where}
      ORDER BY timestamp_ms DESC LIMIT $2`,
     args,

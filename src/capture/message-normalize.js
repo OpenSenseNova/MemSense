@@ -1,5 +1,7 @@
 export function stripMessageEnvelope(text) {
   let t = String(text || '').trim();
+  t = t.replace(/^System:\s*\[[^\]]*GMT[+-]\d+\]\s*[^\n]*\n\n/i, '');
+  t = t.replace(/^System:\s*\[[^\]]*GMT[+-]\d+\]\s*[^\n]*$/i, '');
   t = t.replace(/^Sender \(untrusted metadata\):\s*```json\s*[\s\S]*?```\s*/i, '');
   t = t.replace(/^```json\s*[\s\S]*?```\s*/i, '');
   t = t.replace(/^\[[^\]]*GMT[+-]\d+\]\s*/im, '');

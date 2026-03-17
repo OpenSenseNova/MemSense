@@ -36,19 +36,35 @@ Memsense is built for real agent workloads:
 
 - OpenClaw plugin id: `memsense`
 - Exposed tools:
-  - `memory_save` (QA-only; captures latest session history with optional `k`, default 5; model does not pass session_id; structured metadata is cleaned before ingest)
   - `memory_search`
   - `memory_fetch_recent`
+- QA chunk write path:
+  - automatic per-turn capture on the online conversation path
+  - every saved QA chunk is followed by async embedding + async tagging jobs
+  - `memory_save` is no longer exposed to the model tool surface
 
 ---
 
 ## Architecture (at a glance)
 
-- **Plugin gateway** (`index.ts`) for OpenClaw tools
+- **Plugin gateway** (`index.ts`) for OpenClaw tools and online auto-capture
 - **Backend API** (`src/server`) for memory services
 - **Storage** (`memory_chunks`, `memory_chunk_embeddings`, `memory_events`)
 - **Worker** (`src/worker`) for embedding + async tagging jobs (retry/DLQ)
 - **Dashboard** (`/dashboard`) with token-based RBAC
+
+### Identity fields carried in storage
+
+Each QA chunk should preserve identity dimensions for isolation and filtering:
+
+- `session_id`
+- `agent_id`
+- `user_id`
+
+This makes it possible to distinguish:
+- different sessions of the same agent
+- different agents serving the same user
+- global vs session-scoped retrieval views
 
 ---
 
@@ -170,6 +186,11 @@ Dashboard includes a **Tool Playground** panel to test real API calls for:
 - `memory_search` (`/v1/memory/search`)
 - `memory_fetch_recent` (`/v1/memory/fetch_recent`)
 
+Dashboard list/detail views also show identity metadata including:
+- `session_id`
+- `agent_id`
+- `user_id`
+
 ### First-time access (important)
 
 After startup, open:
@@ -249,4 +270,16 @@ If you open `/dashboard` and see no data:
 
 ```bash
 npm test
+npm run db:migrate
 ```
+
+Recommended validation checklist after schema or capture changes:
+
+1. confirm DB/server/worker are running
+2. run `npm run db:migrate`
+3. verify `/dashboard` loads
+4. verify a fresh QA chunk can be written with:
+   - `session_id`
+   - `agent_id`
+   - `user_id`
+5. verify `memory_fetch_recent` can filter by `session_id` and `agent_id`

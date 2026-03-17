@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS memory_chunks (
   tenant_id TEXT NOT NULL,
   scope TEXT NOT NULL,
   session_id TEXT,
+  agent_id TEXT,
   user_id TEXT,
   content TEXT NOT NULL,
   type_hint TEXT NOT NULL DEFAULT 'qa_chunk',
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS memory_chunks (
 );
 
 ALTER TABLE memory_chunks ADD COLUMN IF NOT EXISTS memory_kind TEXT;
+ALTER TABLE memory_chunks ADD COLUMN IF NOT EXISTS agent_id TEXT;
 ALTER TABLE memory_chunks ALTER COLUMN memory_kind SET DEFAULT 'episodic';
 UPDATE memory_chunks SET memory_kind = 'episodic' WHERE memory_kind IS NULL;
 ALTER TABLE memory_chunks ALTER COLUMN memory_kind SET NOT NULL;
@@ -37,8 +39,12 @@ CREATE INDEX IF NOT EXISTS idx_chunks_tenant_scope_time
   ON memory_chunks (tenant_id, scope, timestamp_ms DESC);
 CREATE INDEX IF NOT EXISTS idx_chunks_session
   ON memory_chunks (tenant_id, scope, session_id, timestamp_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_chunks_agent
+  ON memory_chunks (tenant_id, scope, agent_id, timestamp_ms DESC);
 CREATE INDEX IF NOT EXISTS idx_chunks_user
   ON memory_chunks (tenant_id, scope, user_id, timestamp_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_chunks_agent_session
+  ON memory_chunks (tenant_id, scope, agent_id, session_id, timestamp_ms DESC);
 CREATE INDEX IF NOT EXISTS idx_chunks_status
   ON memory_chunks (tenant_id, scope, status, timestamp_ms DESC);
 CREATE INDEX IF NOT EXISTS idx_chunks_kind_time
