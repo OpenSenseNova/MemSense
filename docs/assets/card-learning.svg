@@ -1,14 +1,14 @@
-<svg width="520" height="320" viewBox="0 0 520 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="520" height="320" rx="28" fill="#ECFEFF"/>
-  <circle cx="170" cy="160" r="74" fill="#CFFAFE"/>
-  <circle cx="170" cy="160" r="34" fill="#06B6D4"/>
-  <path d="M170 86V48M222 108L250 80M244 160H282M222 212L250 240M170 234V272M118 212L90 240M96 160H58M118 108L90 80" stroke="#0891B2" stroke-width="10" stroke-linecap="round"/>
-  <rect x="286" y="90" width="146" height="42" rx="21" fill="white" fill-opacity="0.9"/>
-  <text x="316" y="117" fill="#111827" font-size="22" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">replay</text>
-  <rect x="286" y="144" width="146" height="42" rx="21" fill="white" fill-opacity="0.9"/>
-  <text x="316" y="171" fill="#111827" font-size="22" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">tuning</text>
-  <rect x="286" y="198" width="146" height="42" rx="21" fill="white" fill-opacity="0.9"/>
-  <text x="316" y="225" fill="#111827" font-size="22" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">adaptation</text>
-  <rect x="60" y="40" width="126" height="44" rx="22" fill="#111827"/>
-  <text x="84" y="68" fill="white" font-size="22" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">learning</text>
+<svg width="520" height="220" viewBox="0 0 520 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="520" height="220" rx="24" fill="#ECFEFF"/>
+  <circle cx="118" cy="110" r="48" fill="#CFFAFE"/>
+  <circle cx="118" cy="110" r="22" fill="#06B6D4"/>
+  <path d="M118 68V42M148 80L166 62M160 110H186M148 140L166 158M118 152V178M88 140L70 158M76 110H50M88 80L70 62" stroke="#0891B2" stroke-width="7" stroke-linecap="round"/>
+  <rect x="240" y="66" width="126" height="32" rx="16" fill="white" fill-opacity="0.92"/>
+  <text x="270" y="87" fill="#111827" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">replay</text>
+  <rect x="240" y="104" width="126" height="32" rx="16" fill="white" fill-opacity="0.92"/>
+  <text x="270" y="125" fill="#111827" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">tuning</text>
+  <rect x="240" y="142" width="126" height="32" rx="16" fill="white" fill-opacity="0.92"/>
+  <text x="270" y="163" fill="#111827" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">adaptation</text>
+  <rect x="38" y="28" width="108" height="36" rx="18" fill="#111827"/>
+  <text x="60" y="51" fill="white" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">learning</text>
 </svg>
