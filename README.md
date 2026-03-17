@@ -20,105 +20,70 @@
 
 ---
 
-## What is Memsense?
+## Memsense, in one sentence
 
-Memsense is not just a vector database wrapper or a thin memory plugin.
-
-It is a **memory brain** for agents: a system that continuously captures interaction traces, turns them into structured experience, and makes that experience retrievable, filterable, and increasingly useful over time.
-
-The core idea is simple:
-
-- an agent should **remember**
-- memory should be shaped by **trajectory and experience**, not only static facts
-- retrieval should become **more adaptive over time**, not stay frozen at naive similarity top-k
-- the whole stack should be ready for future **continual learning** workflows
-
-If you want your agent to move from “has tools” to “has experience”, Memsense is the memory layer for that.
+**Memsense turns agent interaction history into a memory brain — one that remembers, organizes experience, and gets better at recall over time.**
 
 ---
 
-## Why it matters
+## The story
 
-Most agent memory systems stop at storing chunks and running vector search.
-Memsense is designed around a more lifelike model:
+Most memory systems are buckets:
+store chunks, run vector search, return top-k.
 
-- **Memory brain, not memory bucket**  
-  Treat memory as an active layer for recall, ranking, filtering, and reuse.
+Memsense is built as a **brain** instead:
 
-- **Experience trajectory, not isolated snippets**  
-  Preserve conversation turns with `session_id`, `agent_id`, `user_id`, and source context so memory comes from actual agent history.
+- it captures **experience**, not just text
+- it preserves **trajectory**, not just isolated facts
+- it improves **retrieval quality**, not just storage volume
+- it lays the data foundation for **continual learning**
 
-- **Self-evolving retrieval**  
-  Retrieval quality improves through richer metadata, temporal semantics, reranking, and diversity-aware selection.
-
-- **Continual-learning ready foundation**  
-  Today it powers better memory recall; tomorrow it can support replay, offline tuning, preference adaptation, and longer-horizon learning loops.
-
----
-
-## Core story
-
-Memsense is built around three product pillars:
-
-### 1. Biomimetic memory brain
-A layered memory system with:
-- online capture
-- async enrichment
-- temporal semantics
-- retrieval-time selection instead of raw nearest-neighbor dumping
-
-### 2. Experience trajectory and self-evolution
-Each interaction becomes part of the agent’s experience trail:
-- automatic per-turn QA capture
-- tags and `memory_kind` added asynchronously
-- session / agent / user identity retained for future filtering and learning
-
-### 3. Continual learning compatibility
-Memsense already stores the kind of data foundation continual learning needs:
-- structured historical traces
-- separable identity dimensions
-- replayable chunks
-- operational visibility through dashboard and test surfaces
+From **tools** to **experience**.  
+From **history** to **memory**.  
+From **memory** to **learning**.
 
 ---
 
-## Why Memsense is different
+## Why people use it
 
-Memsense is built for real agent workloads:
-
-- **Long-term memory that scales** with PostgreSQL + pgvector
-- **Better retrieval quality** with candidate recall + temporal rerank + diversity selection
-- **Automatic online capture** so useful experience is not lost turn by turn
-- **Reliable async enrichment** with embedding jobs, tag jobs, retry, and DLQ
-- **Operational visibility** through a session-first dashboard and RBAC
-- **OpenClaw-native integration** as a memory slot plugin
+- **Memory brain** — active recall, ranking, filtering, reuse
+- **Experience trajectory** — per-turn capture with `session_id`, `agent_id`, `user_id`
+- **Self-evolving retrieval** — temporal semantics, rerank, diversity selection
+- **Continual-learning ready** — replayable traces for future training and adaptation
+- **Operationally real** — async workers, dashboard, RBAC, OpenClaw-native integration
 
 ---
 
 ## What you get today
 
-- OpenClaw plugin id: `memsense`
-- Exposed tools:
-  - `memory_search`
-  - `memory_fetch_recent`
-- Automatic per-turn QA capture on the online path
-- Async embedding and async tagging after each saved chunk
-- `memory_save` retained for internal maintenance / backfill / debug, not the model-facing tool surface
-- Dashboard for overview, list, detail, test, raw, and model-facing inspection
+- automatic per-turn QA capture
+- `memory_search`
+- `memory_fetch_recent`
+- async embedding + async tagging
+- `memory_kind`-aware enrichment
+- session / agent / user identity retention
+- dashboard for inspect, debug, and operations
+
+> `memory_save` is retained for internal maintenance / backfill / debug, not exposed on the model-facing tool surface.
 
 ---
 
-## Architecture at a glance
+## Why it feels different
 
-- **Plugin gateway** (`index.ts`) for OpenClaw tools and online auto-capture
-- **Backend API** (`src/server`) for memory services
-- **Storage** (`memory_chunks`, `memory_chunk_embeddings`, `memory_events`)
-- **Worker** (`src/worker`) for embedding + async tagging jobs (retry/DLQ)
-- **Dashboard** (`/dashboard`) with token-based RBAC
+Memsense is not trying to be just another memory plugin.
+It is trying to become the **experience layer** behind an agent system:
+
+- a better recall layer today
+- a memory operating layer tomorrow
+- a foundation for self-evolve and continual learning after that
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    A[OpenClaw Agent] --> B[Auto-capture per turn]
+    A[Agent turns] --> B[Auto-capture]
     B --> C[memory_chunks]
     C --> D[embedding_jobs]
     C --> E[tag_jobs]
@@ -133,19 +98,17 @@ flowchart LR
     H --> M[Dashboard]
 ```
 
-### Identity fields carried in storage
+**Core layers**
+- online capture
+- async enrichment
+- structured storage
+- retrieval-time selection
+- operational visibility
 
-Each QA chunk preserves identity dimensions for isolation, filtering, and future learning workflows:
-
+**Identity preserved**
 - `session_id`
 - `agent_id`
 - `user_id`
-
-This makes it possible to distinguish:
-- different sessions of the same agent
-- different agents serving the same user
-- global vs session-scoped retrieval views
-- future replay / analysis / continual-learning pipelines
 
 ---
 
