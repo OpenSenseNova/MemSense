@@ -1,8 +1,21 @@
 # Architecture Overview
 
-Memsense is a memory system that turns online agent interaction history into retrievable, structured memory.
+> Docs → [Memsense Docs](../README.md)  
+> See also: [Retrieval Algorithm](retrieval-algorithm.md) · [Embedding & Search](embedding-search.md) · [Worker / Retry / DLQ](worker-retry-dlq.md)
 
-At a high level, the system has four layers:
+## What this page is for
+
+This page explains the full Memsense system flow:
+- how agent history becomes memory
+- how the write path stays fast
+- how retrieval is structured
+- where dashboard and operational surfaces fit
+
+---
+
+## At a glance
+
+Memsense has four layers:
 
 1. **capture** — turn online interaction into memory chunks
 2. **enrichment** — add embeddings, tags, and memory-type semantics
@@ -43,7 +56,7 @@ flowchart LR
 
 ---
 
-## Layer 1: capture
+## Layer 1 — Capture
 
 Capture is the point where agent history becomes memory.
 
@@ -65,7 +78,7 @@ This is what makes Memsense more than a text bucket: memory is tied to real inte
 
 ---
 
-## Layer 2: enrichment
+## Layer 2 — Enrichment
 
 Enrichment happens asynchronously so the write path stays fast.
 
@@ -90,7 +103,7 @@ This layer gives retrieval more structure than raw text similarity alone.
 
 ---
 
-## Layer 3: retrieval
+## Layer 3 — Retrieval
 
 When a query arrives, Memsense does not rely on a single route.
 
@@ -100,14 +113,14 @@ Current retrieval path uses dual recall:
 
 The candidate sets are merged before reranking.
 
-This matters because:
+Why this matters:
 - vector recall improves semantic coverage
 - lexical recall helps exact terms, entities, and phrasing
 - union recall is more robust than either route alone
 
 ---
 
-## Layer 4: selection
+## Layer 4 — Selection
 
 After candidate recall, Memsense applies retrieval-time selection rather than returning raw similarity top-k.
 
@@ -154,3 +167,11 @@ The simplest way to understand Memsense is:
 That is the architectural meaning of:
 
 **From agent history to living memory.**
+
+---
+
+## Next pages
+
+- Read [Retrieval Algorithm](retrieval-algorithm.md) for the scoring and selection logic.
+- Read [Worker / Retry / DLQ](worker-retry-dlq.md) for async job lifecycle and reliability.
+- Read [Dashboard & RBAC](dashboard-rbac.md) for operational surfaces.

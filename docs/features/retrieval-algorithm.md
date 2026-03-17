@@ -1,10 +1,13 @@
 # Retrieval Algorithm
 
+> Docs → [Memsense Docs](../README.md)  
+> See also: [Architecture Overview](architecture-overview.md) · [Embedding & Search](embedding-search.md)
+
+## What this page is for
+
 This page explains how Memsense ranks and selects memories today.
 
-The goal is not “nearest chunk wins”.
-The goal is:
-
+The goal is not “nearest chunk wins”. The goal is:
 - relevant memory
 - current-enough memory
 - lower redundancy
@@ -31,7 +34,7 @@ flowchart LR
 
 ---
 
-## Step 1: dual recall
+## Step 1 — Dual recall
 
 Memsense recalls candidates from two routes.
 
@@ -53,7 +56,7 @@ This creates a broader candidate pool before reranking.
 
 ---
 
-## Step 2: feature computation
+## Step 2 — Feature computation
 
 Each candidate is normalized into a feature set.
 
@@ -87,7 +90,7 @@ This means:
 
 ---
 
-## Step 3: hybrid score
+## Step 3 — Hybrid score
 
 Current base score weights are:
 
@@ -108,7 +111,7 @@ This score is used to produce the first ranked order.
 
 ---
 
-## Step 4: redundancy-aware selection
+## Step 4 — Redundancy-aware selection
 
 Memsense does not stop at base ranking.
 
@@ -190,3 +193,10 @@ A useful memory system should return results that are:
 - confident
 - low-redundancy
 - shaped by the type of memory being retrieved
+
+---
+
+## Next pages
+
+- Read [Architecture Overview](architecture-overview.md) for the full system flow.
+- Read [Embedding & Search](embedding-search.md) for a compact implementation summary.
