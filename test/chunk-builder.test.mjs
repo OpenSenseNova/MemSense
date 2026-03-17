@@ -8,8 +8,8 @@ test('buildChunk returns qa_chunk payload', () => {
     scope: 'user',
     sessionId: 's1',
     userId: 'u1',
-    userText: 'hello',
-    assistantText: 'world',
+    userText: 'Sender (untrusted metadata):\n```json\n{"id":"x"}\n```\n\n[Tue 2026-03-17 14:53 GMT+8] hello',
+    assistantText: '[[reply_to_current]] world',
     tags: ['preference'],
   });
   assert.equal(c.typeHint, 'qa_chunk');

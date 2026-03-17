@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { buildCanonicalQa } from '../capture/canonical-qa.js';
 import { query } from './db/client.js';
 import { embedText, toPgVectorLiteral } from './embedding/client.js';
 import { hybridRerank } from './retrieval/rerank.js';
@@ -14,12 +15,14 @@ function normalizeQaChunkContent(raw) {
   } catch {
     throw new Error('memory_save only accepts qa_chunk content (json)');
   }
-  const user = String(parsed?.user || '').trim();
-  const assistant = String(parsed?.assistant || '').trim();
-  if (!user) {
+  const qa = buildCanonicalQa(parsed || {});
+  if (!qa.user) {
     throw new Error('memory_save requires user_text');
   }
-  return JSON.stringify({ user, assistant });
+  if (/^Sender \(untrusted metadata\):/i.test(qa.user) || /^System:/i.test(qa.user)) {
+    throw new Error('memory_save rejected unnormalized user_text');
+  }
+  return JSON.stringify(qa);
 }
 
 export async function saveChunk(input) {

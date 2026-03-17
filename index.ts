@@ -1,7 +1,8 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 
 import { TriggerPipeline } from "./src/trigger/trigger-pipeline.js";
-import { buildQaFromHistory, normalizeNaturalText, pickFinalAssistantText } from "./src/capture/message-normalize.js";
+import { normalizeNaturalText, buildQaFromHistory } from "./src/capture/message-normalize.js";
+import { buildCanonicalQaJson, canonicalizeUserText, selectFinalAssistantText } from "./src/capture/canonical-qa.js";
 const MEMSENSE_API_URL = process.env.MEMSENSE_API_URL || "http://127.0.0.1:8787";
 
 async function getSetupStatusHint() {
@@ -83,44 +84,7 @@ function formatMemoryInjection(chunks: any[]): string {
   return `<relevant_context>\n${formatted}\n</relevant_context>`;
 }
 
-function stripMessageEnvelope(text: string): string {
-  let t = String(text || "").trim();
-  t = t.replace(/^Sender \(untrusted metadata\):\s*```json\s*[\s\S]*?```\s*/i, "");
-  t = t.replace(/^```json\s*[\s\S]*?```\s*/i, "");
-  t = t.replace(/^\[[^\]]*GMT[+-]\d+\]\s*/im, "");
-  t = t.replace(/^(Sender|Quoted message|Forwarded|metadata)\s*:\s*[\s\S]*?(?=\S)/i, "");
-  return t.trim();
-}
 
-function stripStructuredNoise(text: string): string {
-  let t = stripMessageEnvelope(String(text || ""));
-  t = t.replace(/```(?:json)?[\s\S]*?```/gi, " ");
-  t = t.replace(/\{\s*"(?:role|type|agent|session|tool|content)"[\s\S]*?\}/gi, " ");
-  t = t.replace(/(^|\n)\s*(agent|session|tool|role|run_id|session_id|agent_id)\s*:\s.*$/gim, " ");
-  t = t.replace(/(session_id|agent_id|run_id|tool_name)\s*=\s*[^\s]+/gi, " ");
-  t = t.replace(/<\/?[a-z][^>]*>/gi, " ");
-  t = t.replace(/[ 	]+/g, " ");
-  t = t.replace(/\n{3,}/g, "\n\n");
-  return t.trim();
-}
-
-function extractTextBlock(x: any): string {
-  if (!x) return "";
-  if (typeof x === "string") return normalizeNaturalText(x);
-  if (typeof x !== "object") return "";
-  if (x.type && x.type !== "text") return "";
-  if (typeof x.text === "string") return normalizeNaturalText(x.text);
-  return "";
-}
-
-function contentToText(content: any): string {
-  if (typeof content === "string") return normalizeNaturalText(content);
-  if (Array.isArray(content)) {
-    return content.map((x) => extractTextBlock(x)).filter(Boolean).join(" ").trim();
-  }
-  if (typeof content?.text === "string") return normalizeNaturalText(content.text);
-  return "";
-}
 
 const WriteSchema = {
   type: "object",
@@ -156,7 +120,7 @@ export default {
       const qa = buildQaFromHistory(Array.isArray(event?.historyMessages) ? event.historyMessages : []);
       sessionQaCache.set(String(sid), qa.slice(-40));
 
-      const prompt = normalizeNaturalText(String(event?.prompt || ""));
+      const prompt = canonicalizeUserText(String(event?.prompt || ""));
       const decision = triggerPipeline.decide(prompt);
       if (decision.shouldSave) {
         sessionPendingAutoSave.set(String(sid), {
@@ -174,12 +138,12 @@ export default {
       const pending = sessionPendingAutoSave.get(String(sid));
       if (!pending) return;
       try {
-        const assistant = pickFinalAssistantText(Array.isArray(event?.assistantTexts) ? event.assistantTexts : []);
+        const assistant = selectFinalAssistantText(Array.isArray(event?.assistantTexts) ? event.assistantTexts : []);
         await callApi("/v1/memory/save", {
           tenant_id: "default",
           scope: "user",
           session_id: String(sid),
-          content: JSON.stringify({ user: pending.user, assistant }),
+          content: buildCanonicalQaJson({ user: pending.user, assistant }),
           task_tag: pending.taskTag,
           tags: pending.tags,
           type_hint: "qa_chunk",
@@ -234,11 +198,13 @@ export default {
 
           const chunks = [];
           for (const item of selected) {
+            const content = JSON.parse(buildCanonicalQaJson({ user: item.user, assistant: item.assistant || "" }));
+            if (!content.assistant) continue;
             const saved = await callApi("/v1/memory/save", {
               tenant_id: "default",
               scope: "user",
               session_id: String(sid),
-              content: JSON.stringify({ user: item.user, assistant: item.assistant || "" }),
+              content: JSON.stringify(content),
               type_hint: "qa_chunk",
               source: "session",
               timestamp: item.timestamp || Date.now(),

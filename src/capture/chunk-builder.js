@@ -1,3 +1,5 @@
+import { buildCanonicalQaJson } from './canonical-qa.js';
+
 export function buildChunk({
   tenantId,
   scope,
@@ -11,7 +13,7 @@ export function buildChunk({
   timestamp = Date.now(),
   score = 0.5,
 }) {
-  const content = JSON.stringify({ user: String(userText || ''), assistant: String(assistantText || '') });
+  const content = buildCanonicalQaJson({ user: userText, assistant: assistantText });
   return {
     tenantId,
     scope,
