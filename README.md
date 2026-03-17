@@ -170,12 +170,34 @@ Dashboard includes a **Tool Playground** panel to test real API calls for:
 - `memory_search` (`/v1/memory/search`)
 - `memory_fetch_recent` (`/v1/memory/fetch_recent`)
 
+### First-time access (important)
 
 After startup, open:
 
-- `http://127.0.0.1:8787/dashboard?token=<your_token>`
+- `http://127.0.0.1:8787/dashboard`
+
+The dashboard page itself is public so first-time users can reach the token form.
+Actual dashboard APIs remain protected by token-based RBAC.
+
+You can provide the token in either way:
+
+1. Paste it into the **Dashboard Access** box in the page and click **保存并加载**
+2. Or open with query param:
+   - `http://127.0.0.1:8787/dashboard?token=<your_token>`
 
 If you expose a different port/host, replace accordingly.
+
+### Default local token
+
+In `.env.example` the default token map is:
+
+- `MEMSENSE_DASHBOARD_TOKENS_JSON={"demo":"admin"}`
+
+So for local bootstrap, the default first-use token is usually:
+
+- `demo`
+
+### Custom token map
 
 Token is configured by:
 
@@ -185,6 +207,17 @@ Examples:
 
 - Viewer access: `http://127.0.0.1:8787/dashboard?token=token_viewer`
 - Operator access: `http://127.0.0.1:8787/dashboard?token=token_ops`
+- Admin access with default example token: `http://127.0.0.1:8787/dashboard?token=demo`
+
+### Troubleshooting
+
+If you open `/dashboard` and see no data:
+
+- check whether token is filled in the page
+- verify `MEMSENSE_DASHBOARD_TOKENS_JSON` in `.env`
+- make sure the server was restarted after editing `.env`
+- if API calls return `unauthorized`, the token is missing or wrong
+- if API calls return `forbidden`, the token exists but role is too low for that action
 
 ---
 

@@ -71,7 +71,10 @@
       padding: 12px 14px;
       border-radius: 12px;
       margin-bottom: 16px;
+      white-space: pre-wrap;
     }
+    .auth-card { margin-bottom: 16px; }
+    .auth-ok { color: var(--ok); }
     .kpis {
       display:grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -114,7 +117,17 @@
     .memory-footer { display:flex; justify-content:flex-end; margin-top: 12px; }
     .actions { display:flex; gap:8px; flex-wrap:wrap; }
     .playground-grid { display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-top: 12px; }
-    .result-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; white-space: pre-wrap; word-break: break-word; max-height: 420px; overflow: auto; }
+    .result-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; max-height: 420px; overflow: auto; }
+    .tool-json { display:grid; gap:10px; }
+    .tool-node { border: 1px solid var(--line); border-radius: 10px; background: rgba(24,34,70,.55); overflow: hidden; }
+    .tool-node-head { display:flex; justify-content:space-between; gap:12px; padding:8px 10px; color: var(--muted); border-bottom: 1px solid rgba(42,54,104,.6); }
+    .tool-node-body { padding: 10px 12px; white-space: pre-wrap; word-break: break-word; }
+    .tool-kv { display:grid; grid-template-columns: 180px minmax(0, 1fr); gap:10px; padding:8px 0; border-bottom: 1px dashed rgba(42,54,104,.5); }
+    .tool-kv:last-child { border-bottom: 0; }
+    .tool-key { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .tool-value code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .tool-pill { display:inline-flex; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color: var(--muted); background:#233056; font-size:12px; }
+    details.tool-details summary { cursor:pointer; color: var(--accent); user-select:none; }
     .section-title { font-weight: 700; }
     .empty { color: var(--muted); text-align:center; padding: 18px 10px; }
     .toggle { color: var(--muted); display:flex; align-items:center; gap:8px; }
@@ -138,6 +151,19 @@
         <div class="subtitle">后端驱动字段展示 · 默认按最新时间倒序</div>
       </div>
       <div class="hint">token 走 query/localStorage；搜索默认留空</div>
+    </div>
+
+    <div class="card auth-card">
+      <div class="search-row" style="margin-bottom:8px"><strong>Dashboard Access</strong><span class="hint">首次进入先填 token；保存后会写入浏览器 localStorage</span></div>
+      <div class="search-row">
+        <input id="tokenInput" class="search-input" placeholder="dashboard token，例如 demo" value="" />
+        <button class="btn" onclick="saveTokenAndReload()">保存并加载</button>
+        <button class="btn secondary" onclick="clearTokenAndReload()">清除 token</button>
+      </div>
+      <div class="meta-row">
+        <div id="tokenStatus" class="hint">未验证 token</div>
+        <div class="hint">服务端仍会对 /v1/dashboard/* 接口做 RBAC 鉴权</div>
+      </div>
     </div>
 
     <div class="card search-card">
@@ -204,11 +230,44 @@
   <script>
     const byId = (id) => document.getElementById(id);
     const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-    const token = new URLSearchParams(location.search).get('token') || localStorage.getItem('memsense_token') || prompt('Input dashboard token');
-    if (token) localStorage.setItem('memsense_token', token);
-    const authHeaders = { 'content-type': 'application/json', 'x-memsense-token': token || '' };
+    const initialToken = new URLSearchParams(location.search).get('token') || localStorage.getItem('memsense_token') || '';
+    if (initialToken) localStorage.setItem('memsense_token', initialToken);
+    let token = initialToken;
     window.__contract = null;
     window.__latest = [];
+
+    function getAuthHeaders() {
+      return { 'content-type': 'application/json', 'x-memsense-token': token || '' };
+    }
+
+    function syncTokenUi() {
+      byId('tokenInput').value = token || '';
+      byId('tokenStatus').innerHTML = token
+        ? `<span class="auth-ok">已加载 token</span>`
+        : '未设置 token；请先输入后再加载 dashboard 数据';
+    }
+
+    function saveTokenAndReload() {
+      token = (byId('tokenInput').value || '').trim();
+      if (token) localStorage.setItem('memsense_token', token);
+      else localStorage.removeItem('memsense_token');
+      syncTokenUi();
+      loadAll();
+    }
+
+    function clearTokenAndReload() {
+      token = '';
+      localStorage.removeItem('memsense_token');
+      syncTokenUi();
+      showError('');
+      byId('total').textContent = '-';
+      byId('active').textContent = '-';
+      byId('deleted').textContent = '-';
+      byId('showing').textContent = '-';
+      byId('pipelineStatus').innerHTML = '<div class="empty">请先填写 token。</div>';
+      byId('rows').innerHTML = '<div class="card empty">请先填写 token，然后点击“保存并加载”。</div>';
+      setToolResult('Tool result will appear here.');
+    }
 
     function tryParseJsonText(text) { try { return JSON.parse(text); } catch { return null; } }
     function statusClass(status) { return ['active','archived','deleted'].includes(status) ? status : 'archived'; }
@@ -269,7 +328,7 @@
     }
 
     async function setStatus(memoryId, status) {
-      const res = await fetch('/v1/dashboard/set_status', { method: 'POST', headers: authHeaders, body: JSON.stringify({ memory_id: memoryId, status }) });
+      const res = await fetch('/v1/dashboard/set_status', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ memory_id: memoryId, status }) });
       if (!res.ok) return showError(`set_status failed: ${res.status}`);
       await loadOverview();
     }
@@ -321,8 +380,51 @@
       }).join('');
     }
 
+    function truncateText(text, max = 220) {
+      const t = String(text ?? '');
+      if (t.length <= max) return escapeHtml(t);
+      return `${escapeHtml(t.slice(0, max))}…`;
+    }
+
+    function renderToolValue(value, keyPath = '') {
+      if (value == null) return '<span class="tool-value">null</span>';
+      if (typeof value === 'number' || typeof value === 'boolean') {
+        return `<span class="tool-value"><code>${escapeHtml(value)}</code></span>`;
+      }
+      if (typeof value === 'string') {
+        const looksLikeEmbedding = /embedding/i.test(keyPath) || value.length > 800;
+        if (looksLikeEmbedding) {
+          return `<details class="tool-details"><summary>超长字段，已省略显示（长度 ${value.length}）</summary><div class="tool-node-body">${escapeHtml(value)}</div></details>`;
+        }
+        return `<span class="tool-value">${truncateText(value, 320)}</span>`;
+      }
+      if (Array.isArray(value)) {
+        if (!value.length) return '<span class="tool-value">[]</span>';
+        const allNumbers = value.every((x) => typeof x === 'number');
+        if (allNumbers && value.length > 16) {
+          const preview = value.slice(0, 8).map((x) => Number(x).toFixed(4)).join(', ');
+          return `<details class="tool-details"><summary>数值数组（${value.length} items）</summary><div class="tool-node-body">[${preview}, …]</div></details>`;
+        }
+        return `<div class="tool-json">${value.map((item, idx) => `<div class="tool-node"><div class="tool-node-head"><span>${escapeHtml(`${keyPath}[${idx}]`)}</span><span class="tool-pill">item</span></div><div class="tool-node-body">${renderToolValue(item, `${keyPath}[${idx}]`)}</div></div>`).join('')}</div>`;
+      }
+      if (typeof value === 'object') {
+        const rows = Object.entries(value).map(([k, v]) => `
+          <div class="tool-kv">
+            <div class="tool-key">${escapeHtml(k)}</div>
+            <div class="tool-value">${renderToolValue(v, keyPath ? `${keyPath}.${k}` : k)}</div>
+          </div>`).join('');
+        return `<div class="tool-json">${rows}</div>`;
+      }
+      return `<span class="tool-value">${escapeHtml(String(value))}</span>`;
+    }
+
     function setToolResult(data) {
-      byId('toolResult').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      const root = byId('toolResult');
+      if (typeof data === 'string') {
+        root.innerHTML = `<div class="tool-node-body">${escapeHtml(data)}</div>`;
+        return;
+      }
+      root.innerHTML = renderToolValue(data, 'result');
     }
 
     async function runToolSearch() {
@@ -333,7 +435,7 @@
           query: byId('toolQuery').value || '',
           top_k: Number(byId('toolTopK').value || 8),
         };
-        const r = await fetch('/v1/memory/search', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
+        const r = await fetch('/v1/memory/search', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
         const j = await r.json();
         setToolResult(j);
       } catch (e) {
@@ -348,7 +450,7 @@
           scope: byId('toolRecentScope').value || 'user',
           limit: Number(byId('toolRecentLimit').value || 10),
         };
-        const r = await fetch('/v1/memory/fetch_recent', { method: 'POST', headers: authHeaders, body: JSON.stringify(payload) });
+        const r = await fetch('/v1/memory/fetch_recent', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
         const j = await r.json();
         setToolResult(j);
       } catch (e) {
@@ -357,7 +459,7 @@
     }
 
     async function loadContract() {
-      const r = await fetch('/v1/dashboard/contract', { headers: authHeaders });
+      const r = await fetch('/v1/dashboard/contract', { headers: getAuthHeaders() });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j?.error || `contract failed: ${r.status}`);
       window.__contract = j.data;
@@ -365,7 +467,7 @@
 
     async function loadOverview() {
       const payload = { q: byId('q').value || null, limit: Number(byId('limit').value || 50) };
-      const r = await fetch('/v1/dashboard/overview', { method:'POST', headers: authHeaders, body: JSON.stringify(payload) });
+      const r = await fetch('/v1/dashboard/overview', { method:'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j?.error || `overview failed: ${r.status}`);
       byId('total').textContent = j.data.counts.total;
@@ -377,20 +479,33 @@
     }
 
     async function loadPipeline() {
-      const r = await fetch('/v1/dashboard/pipeline_status', { headers: authHeaders });
+      const r = await fetch('/v1/dashboard/pipeline_status', { headers: getAuthHeaders() });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j?.error || `pipeline failed: ${r.status}`);
       renderPipeline(j.data);
     }
 
     async function loadAll() {
+      if (!token) {
+        syncTokenUi();
+        showError('Dashboard token required.\n\n首次进入请先输入 token（默认 demo，见 .env / README），再点击“保存并加载”。');
+        byId('pipelineStatus').innerHTML = '<div class="empty">请先填写 token。</div>';
+        byId('rows').innerHTML = '<div class="card empty">请先填写 token，然后点击“保存并加载”。</div>';
+        return;
+      }
       try {
         showError('');
         await loadContract();
         await loadOverview();
         await loadPipeline();
+        syncTokenUi();
       } catch (e) {
-        showError(String(e?.message || e));
+        const msg = String(e?.message || e);
+        if (/unauthorized|forbidden/i.test(msg)) {
+          showError(`Dashboard auth failed.\n\n请检查 token 是否正确。当前 token: ${token || '(empty)'}\n默认示例 token: demo`);
+        } else {
+          showError(msg);
+        }
       }
     }
 
@@ -400,6 +515,8 @@
     }
 
     byId('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') loadAll(); });
+    byId('tokenInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveTokenAndReload(); });
+    syncTokenUi();
     loadAll();
   </script>
 </body>
