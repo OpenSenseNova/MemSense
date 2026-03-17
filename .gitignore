@@ -5,3 +5,5 @@ coverage/
 .env
 .venv-bge/
 .runtime/
+evaluation/__pycache__/
+evaluation/output/
