@@ -2,8 +2,8 @@
 
 # Memsense
 
-<p><strong>A memory brain for OpenClaw agents</strong></p>
-<p>Biomimetic memory · experience trajectory · self-evolving retrieval · continual-learning ready</p>
+<p><strong>From agent history to living memory</strong></p>
+<p>A memory brain for OpenClaw agents</p>
 
 <p>
   <img alt="version" src="https://img.shields.io/badge/version-0.1.0-4f46e5" />
@@ -20,37 +20,34 @@
 
 ---
 
-## Memsense, in one sentence
+## Why Memsense
 
-**Memsense turns agent interaction history into a memory brain — one that remembers, organizes experience, and gets better at recall over time.**
+**Memsense turns agent history into living memory.**
 
----
+Not just stored chat logs.  
+Not just vector search.  
+Not just another plugin.
 
-## The story
-
-Most memory systems are buckets:
-store chunks, run vector search, return top-k.
-
-Memsense is built as a **brain** instead:
-
-- it captures **experience**, not just text
-- it preserves **trajectory**, not just isolated facts
-- it improves **retrieval quality**, not just storage volume
-- it lays the data foundation for **continual learning**
-
-From **tools** to **experience**.  
-From **history** to **memory**.  
-From **memory** to **learning**.
+It captures experience turn by turn, preserves trajectory across sessions and agents, and makes recall better over time.
 
 ---
 
-## Why people use it
+## Why people try it
 
-- **Memory brain** — active recall, ranking, filtering, reuse
-- **Experience trajectory** — per-turn capture with `session_id`, `agent_id`, `user_id`
-- **Self-evolving retrieval** — temporal semantics, rerank, diversity selection
-- **Continual-learning ready** — replayable traces for future training and adaptation
-- **Operationally real** — async workers, dashboard, RBAC, OpenClaw-native integration
+- **Remembers like a brain** — recall, rank, filter, reuse
+- **Learns from trajectory** — not isolated snippets
+- **Gets better over time** — temporal rerank + diversity selection
+- **Ready for continual learning** — replayable memory traces
+- **Works in production** — async workers, dashboard, RBAC
+
+---
+
+## Use cases
+
+- **Personal AI memory** — remember preferences, history, ongoing context
+- **Agent experience layer** — give one agent a usable long-term memory
+- **Multi-agent systems** — separate memory by `session_id` / `agent_id` / `user_id`
+- **Learning foundation** — prepare traces for replay, tuning, and future continual learning
 
 ---
 
@@ -59,23 +56,11 @@ From **memory** to **learning**.
 - automatic per-turn QA capture
 - `memory_search`
 - `memory_fetch_recent`
-- async embedding + async tagging
-- `memory_kind`-aware enrichment
-- session / agent / user identity retention
-- dashboard for inspect, debug, and operations
+- async embedding + tagging
+- identity-aware memory storage
+- dashboard for inspect, debug, and ops
 
-> `memory_save` is retained for internal maintenance / backfill / debug, not exposed on the model-facing tool surface.
-
----
-
-## Why it feels different
-
-Memsense is not trying to be just another memory plugin.
-It is trying to become the **experience layer** behind an agent system:
-
-- a better recall layer today
-- a memory operating layer tomorrow
-- a foundation for self-evolve and continual learning after that
+> `memory_save` stays for internal maintenance / backfill / debug, not for the model-facing tool surface.
 
 ---
 
