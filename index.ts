@@ -120,7 +120,9 @@ export default {
       const sid = ctx?.sessionId || event?.sessionId;
       if (shouldSkipAutoCapture(sid, ctx, event)) return;
 
-      const prompt = canonicalizeUserText(String(event?.prompt || ""));
+      let prompt = canonicalizeUserText(String(event?.prompt || ""));
+      // Remove injected context before saving
+      prompt = prompt.replace(/<relevant_context>[\s\S]*?<\/relevant_context>\s*/g, '').trim();
       if (!prompt) return;
       const decision = triggerPipeline.decide(prompt);
       sessionPendingAutoSave.set(String(sid), {
