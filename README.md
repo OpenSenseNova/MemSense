@@ -2,12 +2,6 @@
 
 # Memsense
 
-<p align="center">
-  <picture>
-    <img alt="From agent history to living memory" src="docs/assets/theme-banner.svg" width="92%" />
-  </picture>
-</p>
-
 <p>
   <img alt="version" src="https://img.shields.io/badge/version-0.1.0-4f46e5" />
   <img alt="status" src="https://img.shields.io/badge/status-beta-0ea5e9" />
@@ -22,7 +16,7 @@
 </div>
 
 <p align="center">
-  <img alt="Memsense hero" src="docs/assets/hero-memory-brain.svg" width="88%" />
+  <img alt="Memsense theme banner" src="docs/assets/theme-banner.svg" width="88%" />
 </p>
 
 <p align="center">
