@@ -1,0 +1,47 @@
+<svg width="1200" height="240" viewBox="0 0 1200 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5F3FF"/>
+      <stop offset="0.52" stop-color="#EEF2FF"/>
+      <stop offset="1" stop-color="#ECFEFF"/>
+    </linearGradient>
+    <linearGradient id="core" x1="790" y1="66" x2="1010" y2="176" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="0.5" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="240" rx="28" fill="url(#bg)"/>
+  <circle cx="118" cy="58" r="24" fill="#DDD6FE"/>
+  <circle cx="1082" cy="56" r="22" fill="#CFFAFE"/>
+  <circle cx="1056" cy="186" r="30" fill="#E9D5FF" opacity="0.9"/>
+
+  <text x="58" y="92" fill="#111827" font-size="42" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">From agent history to living memory</text>
+  <text x="58" y="134" fill="#4B5563" font-size="22" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">Experience, recall, and continual-learning foundations for agents</text>
+  <text x="58" y="176" fill="#6B7280" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">Capture experience · preserve trajectory · improve recall · get ready to learn</text>
+
+  <g>
+    <circle cx="864" cy="118" r="58" fill="url(#core)" opacity="0.16"/>
+    <circle cx="864" cy="118" r="36" fill="url(#core)" opacity="0.28"/>
+    <circle cx="864" cy="118" r="18" fill="url(#core)"/>
+
+    <circle cx="774" cy="92" r="8" fill="#8B5CF6"/>
+    <circle cx="816" cy="64" r="7" fill="#A78BFA"/>
+    <circle cx="912" cy="64" r="7" fill="#22D3EE"/>
+    <circle cx="954" cy="92" r="8" fill="#6366F1"/>
+    <circle cx="954" cy="144" r="8" fill="#22D3EE"/>
+    <circle cx="912" cy="172" r="7" fill="#8B5CF6"/>
+    <circle cx="816" cy="172" r="7" fill="#6366F1"/>
+    <circle cx="774" cy="144" r="8" fill="#A78BFA"/>
+
+    <path d="M782 96L834 110M820 68L850 100M908 68L878 100M946 96L894 110M946 140L894 126M908 168L878 136M820 168L850 136M782 140L834 126" stroke="#6366F1" stroke-width="4.5" stroke-linecap="round" opacity="0.72"/>
+  </g>
+
+  <g opacity="0.96">
+    <rect x="986" y="76" width="140" height="34" rx="17" fill="white" fill-opacity="0.92"/>
+    <text x="1012" y="98" fill="#111827" font-size="16" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">memory brain</text>
+    <rect x="986" y="122" width="128" height="34" rx="17" fill="white" fill-opacity="0.92"/>
+    <text x="1012" y="144" fill="#111827" font-size="16" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">self-evolve</text>
+  </g>
+</svg>

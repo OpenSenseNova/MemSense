@@ -102,10 +102,12 @@ def build_session_messages(item: dict, session_range: tuple[int, int] | None = N
 def generate_tags_with_openclaw(content: str) -> dict:
     """Generate tags using openclaw agent."""
     prompt = f"""You are a background memory tagger. Return JSON only.
-Task: generate up to 8 concise tags and one memory_kind for this QA chunk.
+Task: generate up to 8 concise tags, one memory_kind, and a brief summary for this content.
 memory_kind must be exactly one of: stable, preference, episodic, ephemeral.
+Choose stable for long-lived facts or durable identity/preferences; preference for user preferences that can evolve over time; episodic for notable events/decisions/context; ephemeral for very short-lived instructions or temporary state.
 Tags rules: lowercase, short noun/verb phrases, no punctuation noise, no duplicate synonyms.
-Output format: {{"memory_kind": "preference", "tags": ["tag1", "tag2"]}}
+Summary: one concise sentence (max 100 chars) capturing the core topic/intent.
+Output format: {{"memory_kind": "preference", "tags": ["tag1", "tag2"], "summary": "brief summary"}}
 
 Input:
 {content}"""
@@ -117,7 +119,7 @@ Input:
         )
         if result.returncode != 0:
             print(f"      [tag-error] openclaw failed: {result.stderr[:100]}", file=sys.stderr)
-            return {"tags": [], "memory_kind": "episodic"}
+            return {"tags": [], "memory_kind": "episodic", "summary": None}
 
         data = json.loads(result.stdout)
         text = data.get('result', {}).get('payloads', [{}])[0].get('text', '')
@@ -132,12 +134,16 @@ Input:
             if match:
                 output = json.loads(match.group(0))
             else:
-                return {"tags": [], "memory_kind": "episodic"}
+                return {"tags": [], "memory_kind": "episodic", "summary": None}
 
-        return {"tags": output.get("tags", [])[:8], "memory_kind": output.get("memory_kind", "episodic")}
+        return {
+            "tags": output.get("tags", [])[:8],
+            "memory_kind": output.get("memory_kind", "episodic"),
+            "summary": output.get("summary", None)
+        }
     except Exception as e:
         print(f"      [tag-error] {str(e)[:100]}", file=sys.stderr)
-        return {"tags": [], "memory_kind": "episodic"}
+        return {"tags": [], "memory_kind": "episodic", "summary": None}
 
 
 def save_to_memsense(base_url: str, content: str, user_key: str, session_key: str, token: str = None, generate_tags: bool = False, max_chunk_size: int = 4000) -> list[dict]:
@@ -181,8 +187,10 @@ def save_to_memsense(base_url: str, content: str, user_key: str, session_key: st
         if generate_tags:
             tag_data = generate_tags_with_openclaw(chunk)
             payload["tags"] = tag_data["tags"]
-            payload["task_tag"] = "; ".join(tag_data["tags"]) if tag_data["tags"] else None
+            payload["task_tag"] = tag_data["summary"]
             print(f"      [tags] {tag_data['tags']}", file=sys.stderr)
+            if tag_data["summary"]:
+                print(f"      [summary] {tag_data['summary']}", file=sys.stderr)
         resp = requests.post(url, json=payload, headers=headers, timeout=30)
         if not resp.ok:
             error_text = resp.text[:200]

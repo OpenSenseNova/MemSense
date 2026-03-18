@@ -39,28 +39,31 @@
       box-shadow: var(--shadow);
       padding: 16px;
     }
-    .search-card { margin-bottom: 16px; }
-    .search-row, .meta-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-    .meta-row { margin-top: 12px; justify-content: space-between; }
-    .search-input, input[type="number"] {
+    .search-card { margin-bottom: 12px; }
+    .search-row, .meta-row, .filter-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .meta-row { margin-top: 10px; justify-content: space-between; }
+    .filter-row { margin-top: 10px; }
+    .search-input, input[type="number"], select {
       background: var(--panel-2);
       border: 1px solid var(--line);
       color: var(--text);
-      border-radius: 10px;
-      padding: 10px 12px;
-      min-height: 40px;
+      border-radius: 8px;
+      padding: 8px 10px;
+      min-height: 34px;
     }
-    .search-input { flex: 1 1 340px; }
+    .search-input { flex: 1 1 280px; }
+    select { min-width: 120px; }
     .limit { display:flex; align-items:center; gap:8px; color: var(--muted); }
-    input[type="number"] { width: 86px; }
+    input[type="number"] { width: 78px; }
     .btn, .mini-btn {
       border: 1px solid var(--line);
       background: #24418b;
       color: white;
-      border-radius: 10px;
+      border-radius: 8px;
       cursor: pointer;
-      padding: 10px 14px;
+      padding: 8px 12px;
       font-weight: 600;
+      font-size: 12px;
     }
     .btn.secondary, .mini-btn.secondary { background: #24335f; }
     .mini-btn.danger { background: #5a2438; }
@@ -78,11 +81,11 @@
     .kpis {
       display:grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 10px;
+      margin-bottom: 12px;
     }
-    .kpi-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
-    .kpi-value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+    .kpi-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .kpi-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
     .pipeline-grid {
       display:grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -92,10 +95,23 @@
     .pipeline-item { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
     .pipeline-title { font-weight: 700; margin-bottom: 8px; }
     .pipeline-metric { display:flex; justify-content:space-between; gap:10px; color: var(--muted); padding: 3px 0; }
-    .list { display:grid; gap: 14px; margin-top: 16px; }
-    .memory-card { padding: 16px; }
-    .memory-top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom: 12px; }
-    .memory-id { font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+    .list { display:grid; gap: 8px; margin-top: 10px; }
+    .memory-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .memory-table th, .memory-table td { border-bottom: 1px solid rgba(42,54,104,.6); padding: 8px 10px; vertical-align: top; text-align: left; }
+    .memory-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; position: sticky; top: 0; background: rgba(18,25,51,.98); }
+    .memory-row:hover td { background: rgba(24,34,70,.25); }
+    .memory-id { font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; font-size: 11px; }
+    .summary-cell { min-width: 180px; max-width: 320px; }
+    .summary-title { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 3px; }
+    .summary-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+    .row-main { cursor: pointer; }
+    .row-main td { transition: background-color .12s ease; }
+    .row-main.active td { background: rgba(24,34,70,.32); }
+    .action-stack { display:flex; flex-direction:column; gap:5px; align-items:flex-start; min-width: 132px; }
+    .action-hint { color: rgba(159,176,217,.72); font-size: 10px; line-height: 1; }
+    .action-line { display:flex; gap:6px; flex-wrap:nowrap; align-items:center; }
+    .action-line .mini-btn { min-width: 38px; padding: 6px 8px; font-size: 11px; line-height: 1; }
     .status {
       padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase;
       border: 1px solid transparent;
@@ -114,10 +130,12 @@
     .badge { display:inline-flex; align-items:center; gap:6px; border-radius: 999px; border: 1px solid var(--line); padding: 4px 9px; background: rgba(36,51,95,.85); }
     .tags { display:flex; gap:6px; flex-wrap:wrap; }
     .tag { display:inline-flex; padding:4px 8px; border-radius:999px; background:#233056; border:1px solid var(--line); }
-    .memory-footer { display:flex; justify-content:flex-end; margin-top: 12px; }
-    .actions { display:flex; gap:8px; flex-wrap:wrap; }
-    .playground-grid { display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-top: 12px; }
-    .result-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; max-height: 420px; overflow: auto; }
+    .actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .detail-box { margin-top: 6px; background: rgba(24,34,70,.6); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+    .detail-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .playground-grid { display:grid; gap:10px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 10px; }
+    .play-card { min-width: 0; }
+    .result-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; max-height: 460px; overflow: auto; font-size: 12px; }
     .tool-json { display:grid; gap:10px; }
     .tool-node { border: 1px solid var(--line); border-radius: 10px; background: rgba(24,34,70,.55); overflow: hidden; }
     .tool-node-head { display:flex; justify-content:space-between; gap:12px; padding:8px 10px; color: var(--muted); border-bottom: 1px solid rgba(42,54,104,.6); }
@@ -131,6 +149,12 @@
     .section-title { font-weight: 700; }
     .empty { color: var(--muted); text-align:center; padding: 18px 10px; }
     .toggle { color: var(--muted); display:flex; align-items:center; gap:8px; }
+    .scope-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin: 10px 0 8px; }
+    .scope-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    @media (max-width: 1100px) {
+      .playground-grid { grid-template-columns: 1fr; }
+      .detail-grid { grid-template-columns: 1fr; }
+    }
     @media (max-width: 960px) {
       .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .content-pair { grid-template-columns: 1fr; }
@@ -169,12 +193,22 @@
     <div class="card search-card">
       <div class="search-row">
         <input id="q" class="search-input" placeholder="搜索 memory 内容、ID、tag、user、source、scope、status…" value="" />
+        <select id="statusFilter" onchange="renderRows(window.__latest || [])">
+          <option value="all">全部状态</option>
+          <option value="active">active</option>
+          <option value="archived">archived</option>
+          <option value="deleted">deleted</option>
+        </select>
+        <select id="kindFilter" onchange="renderRows(window.__latest || [])">
+          <option value="all">全部 kind</option>
+          <option value="stable">stable</option>
+          <option value="preference">preference</option>
+          <option value="episodic">episodic</option>
+          <option value="ephemeral">ephemeral</option>
+        </select>
+        <div class="limit">结果数 <input id="limit" type="number" min="1" max="200" value="50" /></div>
         <button class="btn" onclick="loadAll()">搜索</button>
         <button class="btn secondary" onclick="resetSearch()">清空</button>
-      </div>
-      <div class="meta-row">
-        <label class="toggle"><input type="checkbox" id="showDeleted" onchange="renderRows(window.__latest || [])" /> 显示 deleted</label>
-        <div class="limit">结果数 <input id="limit" type="number" min="1" max="200" value="50" /></div>
       </div>
     </div>
 
@@ -193,9 +227,9 @@
     </div>
 
     <div class="card search-card">
-      <div class="search-row" style="margin-bottom:8px"><strong>Tool Playground</strong><span class="hint">展示原始 API JSON、返回给模型的包装结果，以及真实 prompt 注入预览</span></div>
+      <div class="search-row" style="margin-bottom:8px"><strong>Test Console</strong><span class="hint">紧凑展示 request / raw API / model-facing payload 与 prompt 注入预览</span></div>
       <div class="playground-grid">
-        <div class="card">
+        <div class="card play-card">
           <div class="section-title">Prompt Injection Preview</div>
           <div class="search-row" style="margin-top:10px">
             <input id="previewTenant" class="search-input" placeholder="tenant_id" value="default" />
@@ -214,7 +248,7 @@
             <button class="btn" onclick="runPromptPreview()">Run Preview</button>
           </div>
         </div>
-        <div class="card">
+        <div class="card play-card">
           <div class="section-title">memory_search</div>
           <div class="search-row" style="margin-top:10px">
             <input id="toolTenant" class="search-input" placeholder="tenant_id" value="default" />
@@ -233,7 +267,7 @@
             <button class="btn" onclick="runToolSearch()">Run memory_search</button>
           </div>
         </div>
-        <div class="card">
+        <div class="card play-card">
           <div class="section-title">memory_fetch_recent</div>
           <div class="search-row" style="margin-top:10px">
             <input id="toolRecentTenant" class="search-input" placeholder="tenant_id" value="default" />
@@ -251,6 +285,18 @@
         </div>
       </div>
       <div id="toolResult" class="result-box" style="margin-top:12px">Tool result will appear here.</div>
+    </div>
+
+    <div class="card search-card">
+      <div class="scope-bar">
+        <span class="scope-label">List Scope</span>
+        <select id="scopeMode" onchange="renderRows(window.__latest || [])">
+          <option value="all">全部</option>
+          <option value="session">按 session</option>
+          <option value="agent">按 agent</option>
+        </select>
+        <select id="scopeValue" onchange="renderRows(window.__latest || [])" style="display:none; min-width: 220px;"></select>
+      </div>
     </div>
 
     <div id="rows" class="list"></div>
@@ -300,6 +346,15 @@
 
     function tryParseJsonText(text) { try { return JSON.parse(text); } catch { return null; } }
     function statusClass(status) { return ['active','archived','deleted'].includes(status) ? status : 'archived'; }
+    function shortText(text, max = 140) {
+      const t = String(text || '').replace(/\s+/g, ' ').trim();
+      return t.length > max ? `${t.slice(0, max)}…` : t;
+    }
+    function shortId(text, head = 8) {
+      const t = String(text || '').trim();
+      if (!t) return '—';
+      return t.length > head ? `${t.slice(0, head)}…` : t;
+    }
 
     function showError(text) {
       const el = byId('error');
@@ -311,13 +366,17 @@
     function contentPreview(raw) {
       const parsed = tryParseJsonText(String(raw || ''));
       if (parsed && typeof parsed === 'object' && (parsed.user || parsed.assistant)) {
-        return `
-          <div class="content-pair">
-            <div class="bubble"><div class="bubble-label">User</div><div>${escapeHtml(parsed.user || '')}</div></div>
-            <div class="bubble"><div class="bubble-label">Assistant</div><div>${escapeHtml(parsed.assistant || '')}</div></div>
-          </div>`;
+        return {
+          user: parsed.user || '',
+          assistant: parsed.assistant || '',
+          raw: raw || '',
+        };
       }
-      return `<div class="content">${escapeHtml(raw || '')}</div>`;
+      return {
+        user: String(raw || ''),
+        assistant: '',
+        raw: raw || '',
+      };
     }
 
     function renderFieldValue(type, value) {
@@ -362,9 +421,33 @@
       await loadOverview();
     }
 
+    function syncScopeOptions(items) {
+      const mode = byId('scopeMode').value || 'all';
+      const select = byId('scopeValue');
+      const list = Array.isArray(items) ? items : [];
+      if (mode === 'all') {
+        select.style.display = 'none';
+        select.innerHTML = '';
+        return;
+      }
+      const values = [...new Set(list.map((x) => mode === 'session' ? x?.meta?.session_id : x?.meta?.agent_id).filter(Boolean))];
+      select.innerHTML = values.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+      select.style.display = values.length ? '' : 'none';
+    }
+
     function renderRows(items) {
-      const showDeleted = byId('showDeleted').checked;
-      const list = showDeleted ? items : items.filter((x) => x.status !== 'deleted');
+      syncScopeOptions(items);
+      const statusFilter = byId('statusFilter').value || 'all';
+      const kindFilter = byId('kindFilter').value || 'all';
+      const scopeMode = byId('scopeMode').value || 'all';
+      const scopeValue = byId('scopeValue').value || '';
+      const list = (items || []).filter((x) => {
+        if (statusFilter !== 'all' && x.status !== statusFilter) return false;
+        if (kindFilter !== 'all' && x?.meta?.memory_kind !== kindFilter) return false;
+        if (scopeMode === 'session' && scopeValue && x?.meta?.session_id !== scopeValue) return false;
+        if (scopeMode === 'agent' && scopeValue && x?.meta?.agent_id !== scopeValue) return false;
+        return true;
+      });
       byId('showing').textContent = list.length;
       const root = byId('rows');
       root.innerHTML = '';
@@ -372,26 +455,71 @@
         root.innerHTML = `<div class="card empty">没有匹配到结果。换个关键词试试，比如 content、user、source、tag 或 memory_id。</div>`;
         return;
       }
-      list.forEach((x) => {
-        const article = document.createElement('article');
-        article.className = 'card memory-card';
-        article.innerHTML = `
-          <div class="memory-top">
-            <div class="memory-id">${escapeHtml(x.memory_id)}</div>
-            <div class="status ${statusClass(x.status)}">${escapeHtml(x.status)}</div>
-          </div>
-          ${contentPreview(x.content)}
-          ${renderMeta(x)}
-          <div class="memory-footer">
-            <div class="actions">
-              <button class="mini-btn secondary" data-id="${escapeHtml(x.memory_id)}" data-s="archived">归档</button>
-              <button class="mini-btn secondary" data-id="${escapeHtml(x.memory_id)}" data-s="active">恢复</button>
-              <button class="mini-btn danger" data-id="${escapeHtml(x.memory_id)}" data-s="deleted">删除</button>
-            </div>
-          </div>`;
-        root.appendChild(article);
-      });
-      root.querySelectorAll('button[data-id]').forEach((btn) => btn.addEventListener('click', () => setStatus(btn.dataset.id, btn.dataset.s)));
+
+      const rowsHtml = list.map((x, idx) => {
+        const parsed = contentPreview(x.content);
+        const meta = x.meta || {};
+        const detailId = `detail-${idx}`;
+        const rowId = `row-${idx}`;
+        return `
+          <tr class="memory-row row-main" data-toggle="${detailId}" data-row="${rowId}" id="${rowId}">
+            <td><div class="mono">${escapeHtml(new Date(Number(x.timestamp_ms || 0)).toLocaleString())}</div></td>
+            <td><span class="status ${statusClass(x.status)}">${escapeHtml(x.status)}</span></td>
+            <td><span class="badge">${escapeHtml(meta.memory_kind || '—')}</span></td>
+            <td><div class="memory-id">${escapeHtml(shortId(x.memory_id, 12))}</div></td>
+            <td class="summary-cell" title="${escapeHtml(parsed.user || '')}"><div class="summary-title">User</div><div class="summary-text">${escapeHtml(shortText(parsed.user, 36))}</div></td>
+            <td class="summary-cell" title="${escapeHtml(parsed.assistant || '')}"><div class="summary-title">Assistant</div><div class="summary-text">${escapeHtml(shortText(parsed.assistant, 44))}</div></td>
+            <td><div class="mono" title="${escapeHtml(meta.session_id || '')}">${escapeHtml(shortId(meta.session_id || '—', 8))}</div><div class="hint mono" title="${escapeHtml(meta.agent_id || '')}">${escapeHtml(shortId(meta.agent_id || '—', 8))}</div></td>
+            <td>${Array.isArray(meta.tags) && meta.tags.length ? `<div class="tags">${meta.tags.slice(0,3).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : '<span class="hint">—</span>'}</td>
+            <td>
+              <div class="action-stack">
+                <div class="action-line"><span class="action-hint">点击行展开详情</span></div>
+                <div class="action-line">
+                  <button class="mini-btn secondary" data-id="${escapeHtml(x.memory_id)}" data-s="archived">归档</button>
+                  <button class="mini-btn secondary" data-id="${escapeHtml(x.memory_id)}" data-s="active">恢复</button>
+                  <button class="mini-btn danger" data-id="${escapeHtml(x.memory_id)}" data-s="deleted">删除</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr id="${detailId}" style="display:none">
+            <td colspan="9">
+              <div class="detail-box">
+                <div class="detail-grid">
+                  <div>
+                    <div class="summary-title">Full content</div>
+                    ${renderMeta(x)}
+                    <div class="content" style="margin-top:8px">${escapeHtml(parsed.raw || '')}</div>
+                  </div>
+                  <div>
+                    <div class="summary-title">User / Assistant</div>
+                    <div class="content-pair">
+                      <div class="bubble"><div class="bubble-label">User</div><div>${escapeHtml(parsed.user || '')}</div></div>
+                      <div class="bubble"><div class="bubble-label">Assistant</div><div>${escapeHtml(parsed.assistant || '')}</div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+
+      root.innerHTML = `<div class="card"><table class="memory-table"><thead><tr><th>Time</th><th>Status</th><th>Kind</th><th>Memory ID</th><th>User</th><th>Assistant</th><th>Session / Agent</th><th>Tags</th><th>Actions</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+      root.querySelectorAll('button[data-id]').forEach((btn) => btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setStatus(btn.dataset.id, btn.dataset.s);
+      }));
+      root.querySelectorAll('tr.row-main[data-toggle]').forEach((row) => row.addEventListener('click', () => {
+        const target = byId(row.dataset.toggle);
+        if (!target) return;
+        const isOpen = target.style.display !== 'none';
+        root.querySelectorAll('tr[id^="detail-"]').forEach((el) => { el.style.display = 'none'; });
+        root.querySelectorAll('tr.row-main').forEach((el) => el.classList.remove('active'));
+        if (!isOpen) {
+          target.style.display = '';
+          row.classList.add('active');
+        }
+      }));
     }
 
     function renderPipeline(data) {
@@ -458,7 +586,7 @@
 
     function currentPromptInjectionFromSearchApi(searchApiJson) {
       const chunks = searchApiJson?.data?.chunks || [];
-      const formatted = chunks.map((c) => c?.text || '').filter(Boolean).join('\n\n');
+      const formatted = chunks.map((c) => c?.content || c?.text || '').filter(Boolean).join('\n\n');
       if (!formatted) return '';
       return `<relevant_context>\n${formatted}\n</relevant_context>`;
     }
@@ -472,6 +600,16 @@
       if (typeof data === 'string') {
         root.innerHTML = `<div class="tool-node-body">${escapeHtml(data)}</div>`;
         return;
+      }
+      if (data && typeof data === 'object') {
+        const sections = [];
+        if (data.request_payload_template) sections.push(`<div><div class="summary-title">Request</div><div class="result-box">${renderToolValue(data.request_payload_template, 'request')}</div></div>`);
+        if (data.raw_api_json) sections.push(`<div><div class="summary-title">Raw API JSON</div><div class="result-box">${renderToolValue(data.raw_api_json, 'raw')}</div></div>`);
+        if (data.model_visible_tool_result_template || data.model_prompt_fragment_actual) sections.push(`<div><div class="summary-title">Model-facing</div><div class="result-box">${renderToolValue(data.model_visible_tool_result_template || data.model_prompt_fragment_actual, 'model')}</div></div>`);
+        if (sections.length) {
+          root.innerHTML = `<div class="detail-grid">${sections.join('')}</div>`;
+          return;
+        }
       }
       root.innerHTML = renderToolValue(data, 'result');
     }
@@ -495,7 +633,7 @@
           current_plugin_strategy: {
             source: 'index.ts -> before_prompt_build -> formatMemoryInjection',
             search_request_payload: payload,
-            assembly_rule: 'chunks.map(c => c?.text || "").filter(Boolean).join("\\n\\n")，再包成 <relevant_context>...</relevant_context>',
+            assembly_rule: 'chunks.map(c => c?.content || c?.text || "").filter(Boolean).join("\\n\\n")，再包成 <relevant_context>...</relevant_context>',
             note: '这是当前插件真实在用的拼接逻辑，不是理想化示意。',
           },
           raw_search_api_json: j,

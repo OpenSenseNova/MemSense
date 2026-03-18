@@ -50,22 +50,31 @@ export async function generateTagsWithOpenClaw(content) {
     `Input:\n${content}`,
   ].join('\n\n');
 
-  const { stdout } = await execFileAsync('openclaw', [
-    'agent',
-    '--session-id', 'memsense-tagger',
-    '--message', prompt,
-    '--json',
-    '--timeout', '90',
-  ], { maxBuffer: 1024 * 1024 });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const { stdout } = await execFileAsync('openclaw', [
+        'agent',
+        '--session-id', 'memsense-tagger',
+        '--message', prompt,
+        '--json',
+        '--timeout', '90',
+      ], { maxBuffer: 1024 * 1024, cwd: process.env.HOME || '/tmp' });
 
-  let out = { tags: [], memory_kind: 'episodic' };
-  try {
-    const j = JSON.parse(stdout);
-    out = tryExtractTaggerOutput(j?.result || j?.output || j?.content || j?.message || stdout);
-  } catch {
-    out = tryExtractTaggerOutput(stdout);
+      let out = { tags: [], memory_kind: 'episodic' };
+      try {
+        const j = JSON.parse(stdout);
+        const text = j?.result?.payloads?.[0]?.text || j?.result || j?.output || j?.content || j?.message || stdout;
+        out = tryExtractTaggerOutput(text);
+      } catch {
+        out = tryExtractTaggerOutput(stdout);
+      }
+      return { tags: sanitizeTags(out.tags), memory_kind: sanitizeMemoryKind(out.memory_kind) };
+    } catch (err) {
+      if (attempt === 2 || !err.message?.includes('locked')) throw err;
+      await new Promise((r) => setTimeout(r, 1000 + attempt * 2000));
+    }
   }
-  return { tags: sanitizeTags(out.tags), memory_kind: sanitizeMemoryKind(out.memory_kind) };
+  return { tags: [], memory_kind: 'episodic' };
 }
 
 export function mergeTags(existing, generated) {

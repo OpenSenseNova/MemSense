@@ -1,0 +1,11 @@
+<svg width="520" height="220" viewBox="0 0 520 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="520" height="220" rx="24" fill="#F8FAFC"/>
+  <path d="M58 146C102 130 132 72 190 80C248 88 256 172 314 162C372 152 402 88 460 74" stroke="#8B5CF6" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="58" cy="146" r="12" fill="#111827"/>
+  <circle cx="190" cy="80" r="12" fill="#6366F1"/>
+  <circle cx="314" cy="162" r="12" fill="#8B5CF6"/>
+  <circle cx="460" cy="74" r="12" fill="#06B6D4"/>
+  <rect x="38" y="28" width="122" height="36" rx="18" fill="#111827"/>
+  <text x="60" y="51" fill="white" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">trajectory</text>
+  <text x="38" y="190" fill="#4B5563" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">Turns become experience.</text>
+</svg>

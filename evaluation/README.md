@@ -117,3 +117,7 @@ Full dataset: `locomo10.json` (10 samples, 272 sessions, 5,882 messages)
 - `judge_util.py` - Grading utilities
 - `locomo10_small.json` - Small test dataset
 - `locomo10.json` - Full dataset
+
+## Acknowledgments
+
+This evaluation framework is based on and improved from [openclaw-eval](https://github.com/ZaynJarvis/openclaw-eval). Thanks to the original authors for their work.

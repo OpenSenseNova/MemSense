@@ -1,0 +1,12 @@
+<svg width="520" height="220" viewBox="0 0 520 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="520" height="220" rx="24" fill="#F5F3FF"/>
+  <rect x="54" y="54" width="412" height="104" rx="22" fill="white" fill-opacity="0.9"/>
+  <circle cx="118" cy="106" r="28" fill="#C4B5FD"/>
+  <path d="M109 106L116 113L129 99" stroke="#111827" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="176" y="82" width="180" height="14" rx="7" fill="#6366F1" fill-opacity="0.28"/>
+  <rect x="176" y="106" width="146" height="14" rx="7" fill="#8B5CF6" fill-opacity="0.22"/>
+  <rect x="176" y="130" width="168" height="14" rx="7" fill="#22D3EE" fill-opacity="0.24"/>
+  <rect x="38" y="28" width="94" height="36" rx="18" fill="#111827"/>
+  <text x="62" y="51" fill="white" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-weight="700">recall</text>
+  <text x="54" y="190" fill="#4B5563" font-size="18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">More useful than raw top-k.</text>
+</svg>
