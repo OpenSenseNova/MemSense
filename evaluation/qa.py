@@ -61,13 +61,13 @@ def send_message(base_url: str, token: str, user: str, message: str, retries: in
         except Exception as e:
             if attempt < retries:
                 print(f"    [retry {attempt + 1}/{retries}] {e}", file=sys.stderr)
-                time.sleep(1)
+                time.sleep(0.5)
             else:
                 raise
     raise RuntimeError(f"Failed after {retries + 1} attempts")
 
 
-async def run_sample_qa(item: dict, sample_idx: int, args: argparse.Namespace, semaphore: asyncio.Semaphore) -> tuple[list[dict], dict]:
+async def run_sample_qa(item: dict, sample_idx: int, args: argparse.Namespace, semaphore: asyncio.Semaphore) -> list[dict]:
     """Process QA for a single sample."""
     sample_id = item["sample_id"]
     user_key = args.user or f"eval-{sample_idx}"
@@ -76,12 +76,22 @@ async def run_sample_qa(item: dict, sample_idx: int, args: argparse.Namespace, s
     if args.count is not None:
         qas = qas[:args.count]
 
-    sample_usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+    # Load existing answers
+    jsonl_path = f"output/qa.{args.task}.jsonl"
+    existing = set()
+    try:
+        with open(jsonl_path, "r", encoding="utf-8") as f:
+            for line in f:
+                rec = json.loads(line)
+                existing.add(rec["question"])
+    except FileNotFoundError:
+        pass
+
     records = []
 
     async with semaphore:
         print(f"\n=== Sample {sample_id} [{sample_idx}] (user={user_key}) ===", file=sys.stderr)
-        print(f"    Running {len(qas)} QA question(s)...", file=sys.stderr)
+        print(f"    Running {len(qas)} QA question(s), {len(existing)} already answered...", file=sys.stderr)
 
         for qi, qa in enumerate(qas, start=1):
             question = qa["question"]
@@ -89,21 +99,58 @@ async def run_sample_qa(item: dict, sample_idx: int, args: argparse.Namespace, s
             category = qa.get("category", "")
             evidence = qa.get("evidence", [])
 
+            if question in existing:
+                print(f"  [{sample_idx}] Q{qi}/{len(qas)}: SKIP (already answered)", file=sys.stderr)
+                continue
+
             print(f"  [{sample_idx}] Q{qi}/{len(qas)}: {question[:60]}{'...' if len(question) > 60 else ''}", file=sys.stderr)
 
-            try:
-                response, usage = await asyncio.to_thread(
-                    send_message,
-                    args.base_url, args.token, user_key, question,
-                )
-                print(f"  [{sample_idx}]   A: {response[:60]}{'...' if len(response) > 60 else ''}", file=sys.stderr)
-                print(f"  [{sample_idx}]   tokens: in={usage.get('input_tokens',0)} out={usage.get('output_tokens',0)}", file=sys.stderr)
-                for k in sample_usage:
-                    sample_usage[k] += usage.get(k, 0)
-            except Exception as e:
-                response = f"[ERROR] {e}"
-                usage = {}
-                print(f"  [{sample_idx}]   A: {response}", file=sys.stderr)
+            # Retry up to 3 times if error response detected
+            max_retries = 1
+            response = None
+            usage = {}
+
+            for retry_attempt in range(max_retries):
+                try:
+                    response, usage = await asyncio.to_thread(
+                        send_message,
+                        args.base_url, args.token, user_key, question,
+                    )
+
+                    # Check for error patterns
+                    if (response == "LLM request timed out." or
+                        "custom-api-claude-codecmd-com (claude-opus-4-5) returned a billing error" in response or
+                        "[ERROR] HTTPConnectionPool(host='127.0.0.1'" in response or
+                        "The AI service is temporarily overloaded." in response or
+                        "Unauthorized - Invalid token" in response or
+                        "503 no healthy upstream" in response or
+                        "分组 CC-aws-high 下模型 claude-opus-4-5 无可用渠道" in response):
+
+                        if retry_attempt < max_retries - 1:
+                            print(f"  [{sample_idx}]   Error detected, retrying ({retry_attempt + 1}/{max_retries})...", file=sys.stderr)
+                            await asyncio.sleep(0.5)
+                            continue
+                        else:
+                            print(f"  [{sample_idx}]   Max retries reached, skipping question", file=sys.stderr)
+                            response = None
+                            break
+
+                    print(f"  [{sample_idx}]   A: {response[:60]}{'...' if len(response) > 60 else ''}", file=sys.stderr)
+                    print(f"  [{sample_idx}]   tokens: in={usage.get('input_tokens',0)} out={usage.get('output_tokens',0)}", file=sys.stderr)
+                    break
+
+                except Exception as e:
+                    if retry_attempt < max_retries - 1:
+                        print(f"  [{sample_idx}]   Exception: {e}, retrying ({retry_attempt + 1}/{max_retries})...", file=sys.stderr)
+                        await asyncio.sleep(0.5)
+                    else:
+                        print(f"  [{sample_idx}]   Max retries reached after exception, skipping question", file=sys.stderr)
+                        response = None
+                        break
+
+            # Skip saving if response is None (failed after retries)
+            if response is None:
+                continue
 
             record = {
                 "sample_id": sample_id,
@@ -118,7 +165,11 @@ async def run_sample_qa(item: dict, sample_idx: int, args: argparse.Namespace, s
             }
             records.append(record)
 
-    return records, sample_usage
+            # Save immediately
+            with open(jsonl_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    return records
 
 
 def main():
@@ -137,7 +188,7 @@ def main():
     samples = load_locomo_data(args.input, args.sample)
     parallel = min(args.parallel, 10)
 
-    print(f"    user: {args.user or 'eval-{sample_idx}'}", file=sys.stderr)
+    print(f"    user: {args.user}", file=sys.stderr)
     print(f"    parallel: {parallel}", file=sys.stderr)
 
     async def _run():
@@ -150,24 +201,22 @@ def main():
 
     results_list = asyncio.run(_run())
 
+    # Calculate total usage from saved files
     total_usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
-    all_records = []
-    for records, sample_usage in results_list:
-        all_records.extend(records)
-        for k in total_usage:
-            total_usage[k] += sample_usage[k]
+    for idx, item in enumerate(samples):
+        sample_idx = idx + 1
+        jsonl_path = f"output/qa.{args.task}.jsonl"
+        try:
+            with open(jsonl_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    rec = json.loads(line)
+                    usage = rec.get("usage", {})
+                    for k in total_usage:
+                        total_usage[k] += usage.get(k, 0)
+        except FileNotFoundError:
+            pass
 
     print(f"\n    total tokens: in={total_usage['input_tokens']} out={total_usage['output_tokens']} total={total_usage['total_tokens']}", file=sys.stderr)
-
-    # Save individual sample results
-    for records, _ in results_list:
-        if records:
-            sample_idx = records[0]["sample_idx"]
-            jsonl_path = f"output/qa.{args.task}.{sample_idx}.jsonl"
-            with open(jsonl_path, "w", encoding="utf-8") as f:
-                for record in records:
-                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
-            print(f"    [{sample_idx}] written to {jsonl_path}", file=sys.stderr)
 
     # Save summary
     summary_path = f"output/qa.{args.task}.txt"

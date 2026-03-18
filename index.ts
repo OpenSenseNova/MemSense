@@ -70,10 +70,12 @@ const triggerPipeline = new TriggerPipeline();
 function shouldSkipAutoCapture(sessionId: unknown, ctx: any, event: any) {
   const sid = String(sessionId || '');
   const agentId = String(ctx?.agentId || event?.agentId || '').trim();
+  const sessionKey = String(ctx?.sessionKey || '');
   if (!sid) return true;
   if (sid === 'memsense-tagger') return true;
   if (sid.startsWith('memsense-internal:')) return true;
   if (agentId === 'memsense-tagger') return true;
+  if (sessionKey.includes(':memsense_test_') ) return true;
   return false;
 }
 
@@ -173,7 +175,9 @@ export default {
     api.on("before_prompt_build", async (event: any, ctx: any) => {
       console.log("[memsense] before_prompt_build triggered");
       const sid = ctx?.sessionId;
-      if (!sid || sessionInjected.has(String(sid))) {
+      const sessionKey = String(ctx?.sessionKey || '');
+      const isTestSession = sessionKey.includes(':memsense_test_');
+      if (!sid || (!isTestSession && sessionInjected.has(String(sid)))) {
         console.log("[memsense] skipping - no sid or already injected");
         return;
       }
