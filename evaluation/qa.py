@@ -8,6 +8,7 @@ Usage:
 import argparse
 import asyncio
 import json
+import os
 import sys
 import time
 import requests
@@ -23,6 +24,33 @@ def load_locomo_data(path: str, sample_index: int | None = None) -> list[dict]:
             sys.exit(1)
         return [data[sample_index]]
     return data
+
+
+def get_session_id(user: str) -> str | None:
+    """Read the current session ID for the given user from sessions.json."""
+    sessions_file = os.path.expanduser("~/.openclaw/agents/main/sessions/sessions.json")
+    try:
+        with open(sessions_file, "r") as f:
+            data = json.load(f)
+        key = f"agent:main:openresponses-user:{user}"
+        return data.get(key, {}).get("sessionId")
+    except Exception as e:
+        print(f"    [reset] could not read session ID: {e}", file=sys.stderr)
+        return None
+
+
+def reset_session(session_id: str) -> None:
+    """Archive the session .jsonl file by renaming it with a timestamp suffix."""
+    sessions_dir = os.path.expanduser("~/.openclaw/agents/main/sessions")
+    src = os.path.join(sessions_dir, f"{session_id}.jsonl")
+    if not os.path.exists(src):
+        return
+    dst = f"{src}.{int(time.time())}"
+    try:
+        os.rename(src, dst)
+        print(f"    [reset] archived {session_id}.jsonl", file=sys.stderr)
+    except Exception as e:
+        print(f"    [reset] error: {e}", file=sys.stderr)
 
 
 def send_message(base_url: str, token: str, user: str, message: str, retries: int = 2) -> tuple[str, dict]:
@@ -57,6 +85,11 @@ def send_message(base_url: str, token: str, user: str, message: str, retries: in
                             break
 
             usage = body.get("usage", {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+
+            # Detect abnormally long responses
+            if usage.get("output_tokens", 0) > 4000:
+                print(f"    [warning] Abnormally long response: {usage.get('output_tokens')} tokens", file=sys.stderr)
+
             return response_text, usage
         except Exception as e:
             if attempt < retries:
@@ -168,6 +201,11 @@ async def run_sample_qa(item: dict, sample_idx: int, args: argparse.Namespace, s
             # Save immediately
             with open(jsonl_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+            # Reset session to prevent history accumulation
+            session_id = get_session_id(user_key)
+            if session_id:
+                reset_session(session_id)
 
     return records
 
