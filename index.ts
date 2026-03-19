@@ -1,9 +1,14 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 import { TriggerPipeline } from "./src/trigger/trigger-pipeline.js";
 import { normalizeNaturalText, buildQaFromHistory, contentToText } from "./src/capture/message-normalize.js";
 import { buildCanonicalQaJson, canonicalizeUserText, selectFinalAssistantText } from "./src/capture/canonical-qa.js";
 const MEMSENSE_API_URL = process.env.MEMSENSE_API_URL || "http://127.0.0.1:8787";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 async function getSetupStatusHint() {
   try {
@@ -118,6 +123,19 @@ export default {
   description: "Memsense memory plugin for OpenClaw",
   kind: "memory",
   register(api: OpenClawPluginApi) {
+    api.registerService({
+      id: "memsense-server",
+      async start(ctx) {
+        const scriptPath = join(__dirname, "scripts", "start-bash.sh");
+        spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit", detached: true });
+        ctx.logger.info("memsense server started");
+      },
+      async stop(ctx) {
+        const scriptPath = join(__dirname, "scripts", "stop-bash.sh");
+        spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit" });
+        ctx.logger.info("memsense server stopped");
+      },
+    });
     api.on("llm_input", async (event: any, ctx: any) => {
       const sid = ctx?.sessionId || event?.sessionId;
       if (shouldSkipAutoCapture(sid, ctx, event)) return;
