@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+echo "[memsense] ROOT_DIR: $ROOT_DIR"
 cd "$ROOT_DIR"
 
 if [[ ! -f .env ]]; then
@@ -88,7 +89,18 @@ elif [[ "$STRATEGY" == "local" ]]; then
   upsert_env MEMSENSE_EMBEDDING_PROVIDER 'bge_http'
   upsert_env MEMSENSE_BGE_ENDPOINT 'http://127.0.0.1:8080/embed'
   upsert_env MEMSENSE_BGE_MODEL 'BAAI/bge-large-zh-v1.5'
-  bash scripts/start-local-bge-python.sh
+  # install bge python service
+  PYTHON_BIN="${PYTHON_BIN:-python3}"
+  VENV_DIR=".venv-bge"
+  if [[ ! -d "$VENV_DIR" ]]; then
+    "$PYTHON_BIN" -m venv "$VENV_DIR"
+  fi
+  source "$VENV_DIR/bin/activate"
+  pip install --upgrade pip >/dev/null
+  pip install fastapi uvicorn sentence-transformers >/dev/null
+  # download hf model
+  mkdir -p $ROOT_DIR/.models
+  hf download $MEMSENSE_BGE_MODEL --cache-dir $ROOT_DIR/.models
 else
   echo "[memsense] invalid strategy: $STRATEGY"
   echo "Usage: bash scripts/bootstrap-nodocker.sh [openai|local]"
@@ -111,8 +123,8 @@ source .env
 set +a
 
 npm run db:migrate
-
-echo "[memsense] starting server + worker in background"
-bash scripts/run-local.sh
+# move this part to start-bash.sh
+# echo "[memsense] starting server + worker in background"
+# bash scripts/run-local.sh
 
 echo "[memsense] no-docker setup completed"
