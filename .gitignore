@@ -7,3 +7,4 @@ coverage/
 .runtime/
 evaluation/__pycache__/
 evaluation/output/
+.models/
