@@ -11,7 +11,8 @@ HOST = os.getenv("MEMSENSE_BGE_HOST", "127.0.0.1")
 PORT = int(os.getenv("MEMSENSE_BGE_PORT", "8080"))
 
 app = FastAPI(title="memsense-bge")
-model = SentenceTransformer(MODEL_ID)
+save_dir = os.getenv("MEMSENSE_BGE_SAVE_DIR", "./.model")
+model = SentenceTransformer(MODEL_ID, cache_folder=save_dir)
 
 class EmbedReq(BaseModel):
     input: str = ""
