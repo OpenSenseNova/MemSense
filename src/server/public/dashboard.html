@@ -174,10 +174,10 @@
         <h1 class="title">Memsense Dashboard</h1>
         <div class="subtitle">后端驱动字段展示 · 默认按最新时间倒序</div>
       </div>
-      <div class="hint">token 走 query/localStorage；搜索默认留空</div>
+      <div class="hint">local dashboard（token 已隐藏）</div>
     </div>
 
-    <div class="card auth-card">
+    <div class="card auth-card" style="display:none">
       <div class="search-row" style="margin-bottom:8px"><strong>Dashboard Access</strong><span class="hint">首次进入先填 token；保存后会写入浏览器 localStorage</span></div>
       <div class="search-row">
         <input id="tokenInput" class="search-input" placeholder="dashboard token，例如 demo" value="" />
