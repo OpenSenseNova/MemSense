@@ -11,6 +11,25 @@ async function postJson(url, body, headers = {}) {
   return json;
 }
 
+function extractEmbedding(json) {
+  return json?.data?.[0]?.embedding || json?.data?.embedding || json?.embedding || (Array.isArray(json) ? json[0] : null);
+}
+
+function buildOpenAiEmbeddingRequest(baseUrl, model, input) {
+  const trimmedBaseUrl = baseUrl.replace(/\/$/, '');
+  const isDoubaoMultimodal = trimmedBaseUrl.includes('volces.com') && trimmedBaseUrl.includes('multimodal');
+  if (isDoubaoMultimodal) {
+    return {
+      url: trimmedBaseUrl,
+      body: { model, input: [{ type: 'text', text: input }] },
+    };
+  }
+  return {
+    url: `${trimmedBaseUrl}/embeddings`,
+    body: { model, input },
+  };
+}
+
 export async function embedText(text) {
   const cfg = getConfig();
   const provider = cfg.embedding.provider;
@@ -20,7 +39,7 @@ export async function embedText(text) {
   if (provider === 'bge_http') {
     const url = cfg.embedding.bgeEndpoint;
     const json = await postJson(url, { input, model: cfg.embedding.bgeModel, inputs: [input] });
-    const vec = json?.embedding || json?.data?.[0]?.embedding || (Array.isArray(json) ? json[0] : null);
+    const vec = extractEmbedding(json);
     if (!Array.isArray(vec)) throw new Error('bge_http invalid embedding response');
     return vec;
   }
@@ -30,8 +49,10 @@ export async function embedText(text) {
   const apiKey = cfg.embedding.openaiApiKey;
   const model = cfg.embedding.model;
   if (!apiKey) throw new Error('MEMSENSE_OPENAI_API_KEY is required for openai provider');
-  const json = await postJson(`${baseUrl.replace(/\/$/, '')}/embeddings`, { model, input }, { authorization: `Bearer ${apiKey}` });
-  const vec = json?.data?.[0]?.embedding;
+
+  const { url, body } = buildOpenAiEmbeddingRequest(baseUrl, model, input);
+  const json = await postJson(url, body, { authorization: `Bearer ${apiKey}` });
+  const vec = extractEmbedding(json);
   if (!Array.isArray(vec)) throw new Error('openai-compatible invalid embedding response');
   return vec;
 }

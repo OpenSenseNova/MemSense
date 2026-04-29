@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PIP_NO_CACHE_DIR=1 \
+    MEMSENSE_BGE_HOST=0.0.0.0 \
+    MEMSENSE_BGE_PORT=8080 \
+    MEMSENSE_BGE_SAVE_DIR=/data
+
+RUN set -eux; \
+    arch="$(uname -m)"; \
+    if [ "$arch" = "x86_64" ]; then \
+      pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.6.0; \
+    else \
+      pip install --no-cache-dir torch==2.6.0; \
+    fi; \
+    pip install --no-cache-dir fastapi uvicorn "numpy<2" sentence-transformers==2.7.0
+
+COPY scripts/bge_local_server.py /app/bge_local_server.py
+
+EXPOSE 8080
+
+CMD ["python", "/app/bge_local_server.py"]

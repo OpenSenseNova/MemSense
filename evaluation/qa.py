@@ -69,7 +69,7 @@ def send_message(base_url: str, token: str, user: str, message: str, retries: in
 
     for attempt in range(retries + 1):
         try:
-            resp = requests.post(url, json=payload, headers=headers, timeout=300)
+            resp = requests.post(url, json=payload, headers=headers, timeout=300, proxies={"http": None, "https": None})
             if not resp.ok:
                 print(f"    [error] {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
             resp.raise_for_status()
@@ -213,15 +213,24 @@ async def run_sample_qa(item: dict, sample_idx: int, args: argparse.Namespace, s
 def main():
     parser = argparse.ArgumentParser(description="Run QA evaluation")
     parser.add_argument("input", help="Path to LoCoMo JSON file")
-    parser.add_argument("--base-url", default="http://127.0.0.1:18789", help="API base URL")
+    parser.add_argument("--base-url", default="http://127.0.0.1:8899", help="API base URL")
     parser.add_argument("--token", required=True, help="Auth token")
     parser.add_argument("--sample", type=int, default=None, help="Sample index (0-based)")
     parser.add_argument("--count", type=int, default=None, help="Number of QA questions to run")
     parser.add_argument("--user", default=None, help="User ID")
     parser.add_argument("--parallel", "-p", type=int, default=1, help="Number of samples to process concurrently")
     parser.add_argument("--task", required=True, help="Task name for output file")
+    parser.add_argument("--overwrite", action="store_true", help="Remove existing output/qa.<task> files before running")
 
     args = parser.parse_args()
+
+    if args.overwrite:
+        for path in (f"output/qa.{args.task}.jsonl", f"output/qa.{args.task}.txt"):
+            try:
+                os.remove(path)
+                print(f"    removed existing {path}", file=sys.stderr)
+            except FileNotFoundError:
+                pass
 
     samples = load_locomo_data(args.input, args.sample)
     parallel = min(args.parallel, 10)

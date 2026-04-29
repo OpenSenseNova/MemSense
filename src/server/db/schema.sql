@@ -59,6 +59,26 @@ CREATE INDEX IF NOT EXISTS idx_chunks_fts_simple
 -- For small/self-hosted deployments, sequential scan is acceptable.
 -- Add an ANN index later once dimensions are standardized.
 
+-- Role-specific embeddings: 区分 user/assistant 视角，支持独立检索通路
+-- 原有 embedding 列保留作为整体 QA 的 embedding（兼容 + MMR 去重用）
+ALTER TABLE memory_chunk_embeddings ADD COLUMN IF NOT EXISTS embedding_user vector;
+ALTER TABLE memory_chunk_embeddings ADD COLUMN IF NOT EXISTS embedding_assistant vector;
+
+-- Facet 文本列：直接存在 memory_chunks 中，按需填充（NULL 表示无该类 facet）
+ALTER TABLE memory_chunks ADD COLUMN IF NOT EXISTS facet_personal_info TEXT;
+ALTER TABLE memory_chunks ADD COLUMN IF NOT EXISTS facet_preferences TEXT;
+ALTER TABLE memory_chunks ADD COLUMN IF NOT EXISTS facet_events TEXT;
+
+-- Facet embedding 列：与 user/assistant embedding 同表，按需填充
+ALTER TABLE memory_chunk_embeddings ADD COLUMN IF NOT EXISTS embedding_facet_personal_info vector;
+ALTER TABLE memory_chunk_embeddings ADD COLUMN IF NOT EXISTS embedding_facet_preferences vector;
+ALTER TABLE memory_chunk_embeddings ADD COLUMN IF NOT EXISTS embedding_facet_events vector;
+
+-- next_user：保存"该 chunk 的下一轮用户追问"。在下一条 chunk 写入时反向补写。
+-- 文本列用于审计/调试/重算，向量列作为第 8 条召回路由 (vec_next_user)。
+ALTER TABLE memory_chunks ADD COLUMN IF NOT EXISTS next_user_text TEXT;
+ALTER TABLE memory_chunk_embeddings ADD COLUMN IF NOT EXISTS embedding_next_user vector;
+
 CREATE TABLE IF NOT EXISTS memory_events (
   id BIGSERIAL PRIMARY KEY,
   memory_id TEXT,

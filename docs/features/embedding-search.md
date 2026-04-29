@@ -13,8 +13,8 @@ This page gives a compact summary of how Memsense stores embeddings and performs
 
 - save flow writes cleaned QA chunk metadata into `memory_chunks`
 - structured metadata noise is stripped before ingest
-- worker computes embeddings and stores vectors in `memory_chunk_embeddings`
-- search uses vector similarity + lexical signal + hybrid rerank
+- worker computes full/user/assistant/next-user/facet embeddings and stores vectors in `memory_chunk_embeddings`
+- search uses 8-route recall, SQL RRF fusion, session-first hybrid selection when session chunks are present, and MMR diversity selection
 
 ---
 
@@ -29,8 +29,8 @@ This page gives a compact summary of how Memsense stores embeddings and performs
 
 Search returns ranked chunks with fields such as:
 - `final_score`
-- `vector_score`
-- `lexical_score`
+- `rrf_score`
+- `routes`
 - `explain`
 
 ---

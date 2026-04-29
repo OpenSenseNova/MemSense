@@ -21,93 +21,73 @@ The goal is not “nearest chunk wins”. The goal is:
 flowchart LR
     A[user query] --> B[query embedding]
     A --> C[FTS query]
-    B --> D[vector candidate recall]
-    C --> E[lexical candidate recall]
-    D --> F[candidate union]
-    E --> F
-    F --> G[feature normalization]
-    G --> H[hybrid score]
-    H --> I[temporal rerank]
-    I --> J[MMR-style diversity selection]
-    J --> K[top-k results]
+    B --> D[8-route candidate recall]
+    C --> D
+    D --> E[SQL RRF fusion]
+    E --> F{session chunks present?}
+    F -->|yes| G[session-first hybrid scoring]
+    F -->|no| H[fallback final score]
+    G --> I[MMR-style diversity selection]
+    H --> I
+    I --> J{fallback path?}
+    J -->|yes| K[neighbor expansion]
+    J -->|no| L[top-k session results]
+    K --> L
 ```
 
 ---
 
-## Step 1 — Dual recall
+## Step 1 — 8-route recall
 
-Memsense recalls candidates from two routes.
+Memsense recalls candidates from eight parallel routes:
 
-### Vector route
-- embed the query
-- compare against stored embeddings
-- compute `vector_score`
-
-### Lexical route
-- build PostgreSQL full-text search query
-- rank matches with `ts_rank_cd`
-- normalize into `lexical_score`
+- `vec_full`: full QA chunk embedding
+- `vec_user`: user-side embedding
+- `vec_asst`: assistant-side embedding
+- `vec_next_user`: next user turn embedding, backfilled onto the previous chunk
+- `lexical`: PostgreSQL full-text search over `task_tag + content`
+- `facet_personal_info`: personal-info facet embedding
+- `facet_preferences`: preference facet embedding
+- `facet_events`: event facet embedding
 
 Candidate pool sizing:
-- vector candidates: `max(top_k * 4, 16)`
-- lexical candidates: `max(top_k * 4, 16)`
+- per-route candidates: `max(max(top_k * 4, 32) * 2, 40)`
+- final candidate limit before MMR: `max(top_k * 4, 32)`
 
 This creates a broader candidate pool before reranking.
 
 ---
 
-## Step 2 — Feature computation
+## Step 2 — RRF fusion
 
-Each candidate is normalized into a feature set.
-
-Current features:
-- `vector_score`
-- `lexical_score`
-- `score` (stored memory score)
-- `confidence`
-- `temporal_score`
-- `memory_kind`
-
-### Temporal score
-Temporal score is not uniform across all memory types.
-
-Current decay windows:
-- `stable` → 180 days
-- `preference` → 21 days
-- `episodic` → 14 days
-- `ephemeral` → 3 days
-
-Temporal score is computed as exponential decay:
+SQL fuses all route ranks using Reciprocal Rank Fusion:
 
 ```text
-temporal_score = exp(- age / tau(memory_kind))
+rrf_score = sum(1 / (15 + rank_in_route))
 ```
 
-This means:
-- stable facts decay slowly
-- ephemeral instructions decay quickly
-- preferences and episodes sit in between
+RRF uses route rank rather than raw similarity, so vector, lexical, and facet routes can be combined without fragile score normalization.
 
 ---
 
-## Step 3 — Hybrid score
+## Step 3 — Final score
 
-Current base score weights are:
+The current final score is:
 
 ```text
-final_score =
-  0.35 * vector_score +
-  0.20 * lexical_score +
-  0.15 * memory_score +
-  0.10 * confidence +
-  0.20 * temporal_score
+final_score = rrf_score + 0.1 * memory_score
 ```
 
-Where:
-- `memory_score` is the stored chunk score
-- `confidence` is the stored confidence signal
+`memory_score` is the stored chunk quality score. `confidence` and temporal decay are not in the live scoring path.
 
-This score is used to produce the first ranked order.
+For evaluation data ingested with `--mode hybrid`, session chunks remain the prompt-visible memory. Turn chunks do not directly enter the final top-k; they add bounded support to the matching session:
+
+```text
+turn_support = min(0.12, 0.6 * best_turn_rrf_score_for_same_session)
+hybrid_rrf_score = session_rrf_score + turn_support
+```
+
+If no session chunk is available, retrieval falls back to the normal chunk-level ranking path.
 
 ---
 
@@ -152,8 +132,8 @@ A naive memory system often fails in three ways:
 3. **too stale** — returns memory that is similar but no longer timely
 
 The current Memsense pipeline directly addresses those problems:
-- dual recall for better coverage
-- temporal rerank for current validity
+- multi-route recall for better coverage
+- memory score for reusable high-value chunks
 - diversity selection for lower redundancy
 
 ---
@@ -172,10 +152,12 @@ This separation makes it easier to evolve retrieval quality without rewriting th
 ## Output fields
 
 Current search results expose ranking detail through fields such as:
-- `vector_score`
-- `lexical_score`
+- `rrf_score`
+- `routes`
 - `final_score`
 - `explain`
+
+For session-first hybrid results, `explain` also includes `session_rrf_score`, `turn_support`, `supporting_turn_count`, and `best_turn_routes`.
 
 This makes retrieval behavior inspectable and easier to debug.
 

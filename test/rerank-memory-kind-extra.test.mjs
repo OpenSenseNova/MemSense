@@ -1,21 +1,27 @@
+/**
+ * 扩展测试：针对改动后的 normalizeRows
+ *
+ * 旧版本：normalizeRows 处理 memory_kind 字段和 temporal_score
+ * 新版本：不再处理 memory_kind（SQL 已注入），不计算 temporal_score（信号移除）
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { hybridRerank, normalizeRows } from '../src/server/retrieval/rerank.js';
+import { normalizeRows, hybridRerank } from '../src/server/retrieval/rerank.js';
 
-test('normalizeRows falls back unknown memory_kind to episodic', () => {
+test('normalizeRows: score 被 clamp 到 [0,1]', () => {
   const rows = normalizeRows([
-    { memory_id: 'x', memory_kind: 'weird-kind', vector_score: 0.5, lexical_score: 0.2, score: 0.5, confidence: 0.7, timestamp_ms: Date.now() }
+    { memory_id: 'x', score: 1.5, rrf_score: 0.05, embedding: null }
   ]);
-  assert.equal(rows[0].memory_kind, 'episodic');
+  assert.equal(rows[0].score, 1);
 });
 
-test('hybridRerank still returns results when all candidates are near-duplicates', () => {
-  const now = Date.now();
+test('hybridRerank: MMR 在所有候选都近似重复时仍返回结果', () => {
   const rows = [
-    { memory_id: 'dup-1', vector_score: 0.95, lexical_score: 0.3, score: 0.5, confidence: 0.7, memory_kind: 'episodic', timestamp_ms: now, embedding: '[1,0]', tags: ['a'] },
-    { memory_id: 'dup-2', vector_score: 0.94, lexical_score: 0.31, score: 0.5, confidence: 0.7, memory_kind: 'episodic', timestamp_ms: now, embedding: '[1,0]', tags: ['a'] },
+    { memory_id: 'dup-1', rrf_score: 0.05, score: 0.5, embedding: '[1,0]', tags: ['a'] },
+    { memory_id: 'dup-2', rrf_score: 0.04, score: 0.5, embedding: '[1,0]', tags: ['a'] },
   ];
-  const ranked = hybridRerank(rows, 2, { nowMs: now, duplicateThreshold: 0.1 });
-  assert.equal(ranked.length, 2);
+  const ranked = hybridRerank(rows, 2, { duplicateThreshold: 0.1 });
+  assert.equal(ranked.length, 2, '即使全部重复，也应返回所有 topK 结果');
   assert.equal(ranked[0].memory_id, 'dup-1');
 });

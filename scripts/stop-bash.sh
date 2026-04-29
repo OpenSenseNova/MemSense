@@ -13,4 +13,8 @@ for name in bge server worker tag-worker; do
   fi
 done
 
+pkill -f src/worker/tag-worker.js
+pkill -f src/worker/index.js
+pkill -f src/server/index.js
+
 rm .runtime/*

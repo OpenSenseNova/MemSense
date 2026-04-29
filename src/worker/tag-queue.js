@@ -19,6 +19,7 @@ export async function claimNextTagJob() {
 
 export async function markTagJobDone(id) {
   await query(`UPDATE tag_jobs SET status='done', updated_at=NOW() WHERE id=$1`, [id]);
+  await query(`SELECT pg_notify('memsense_jobs', 'tag_done')`);
 }
 
 export async function markTagJobRetry(id, attempts, err) {
@@ -37,4 +38,5 @@ export async function markTagJobDlq(job, err) {
     `INSERT INTO tag_dlq (job_id, chunk_id, payload, error) VALUES ($1,$2,$3::jsonb,$4)`,
     [job.id, job.chunk_id, JSON.stringify(job.payload || {}), String(err || 'error').slice(0, 2000)],
   );
+  await query(`SELECT pg_notify('memsense_jobs', 'tag_failed')`);
 }

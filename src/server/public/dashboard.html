@@ -241,7 +241,7 @@
           </div>
           <div class="search-row" style="margin-top:10px">
             <input id="previewUserId" class="search-input" placeholder="user_id" value="demo-user" />
-            <div class="limit">top_k <input id="previewTopK" type="number" min="1" max="20" value="5" /></div>
+            <div class="limit">top_k <input id="previewTopK" type="number" min="1" max="20" value="4" /></div>
           </div>
           <div class="search-row" style="margin-top:10px">
             <input id="previewPrompt" class="search-input" placeholder="当前用户 prompt" value="苹果生态相关偏好是什么？" />
@@ -261,7 +261,7 @@
           <div class="search-row" style="margin-top:10px">
             <input id="toolUserId" class="search-input" placeholder="user_id（可选）" value="demo-user" />
             <input id="toolQuery" class="search-input" placeholder="query" value="苹果" />
-            <div class="limit">top_k <input id="toolTopK" type="number" min="1" max="20" value="8" /></div>
+            <div class="limit">top_k <input id="toolTopK" type="number" min="1" max="20" value="4" /></div>
           </div>
           <div class="search-row" style="margin-top:10px">
             <button class="btn" onclick="runToolSearch()">Run memory_search</button>
@@ -623,7 +623,7 @@
           agent_id: byId('previewAgentId').value || null,
           user_id: byId('previewUserId').value || null,
           query: byId('previewPrompt').value || '',
-          top_k: Number(byId('previewTopK').value || 5),
+          top_k: Number(byId('previewTopK').value || 4),
         };
         const r = await fetch('/v1/memory/search', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
         const j = await r.json();
@@ -654,7 +654,7 @@
           agent_id: byId('toolAgentId').value || null,
           user_id: byId('toolUserId').value || null,
           query: byId('toolQuery').value || '',
-          top_k: Number(byId('toolTopK').value || 8),
+          top_k: Number(byId('toolTopK').value || 4),
         };
         const r = await fetch('/v1/memory/search', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
         const j = await r.json();
