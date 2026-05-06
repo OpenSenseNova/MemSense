@@ -29,23 +29,17 @@
 
 ## Overview
 
-### Why we built Memsense
-
 Agents learn useful context while they work: project names, user preferences, failed approaches, and decisions that should carry into the next session. Without memory, that experience disappears as soon as the session ends.
 
-Dumping every message into a vector store is not enough. Memsense captures structured agent turns, scores them, and recalls them through a deterministic retrieval pipeline you can inspect.
+Memsense captures structured agent turns, scores them, and recalls them through a deterministic retrieval pipeline you can inspect. It is built for agent experience, not raw transcript dumping.
 
-Memsense takes a different approach:
+What you get:
 
 - **Capture useful turns automatically.** OpenClaw lifecycle hooks write canonical QA chunks without asking the agent to call a save tool.
 - **Recall deterministically.** 8-route RRF + MMR search decides what comes back; no LLM chooses memories behind the scenes.
-- **Stay inspectable.** The dashboard shows live search output, prompt-preview assembly, scores, and matched routes.
-
-### What you get
-
-- **Typed scored chunks** (`stable` / `preference` / `episodic` / `ephemeral`) with promote / demote controls and feedback audit events.
-- **A live test console** for search, recent-memory fetches, prompt-preview assembly, `rrf_score`, routes, and `final_score`.
-- **Self-hosted runtime** with Postgres, workers, dashboard, and either local BGE embeddings or any OpenAI-compatible embedding endpoint.
+- **Keep memory typed and scored.** Chunks are classified as `stable`, `preference`, `episodic`, or `ephemeral`, with promote / demote controls and feedback audit events.
+- **Debug recall live.** The dashboard shows search results, recent-memory fetches, prompt-preview assembly, `rrf_score`, routes, and `final_score`.
+- **Run self-hosted.** Postgres, workers, dashboard, and embeddings run in your environment with local BGE or any OpenAI-compatible embedding endpoint.
 
 ---
 
