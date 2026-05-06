@@ -49,23 +49,6 @@ What you get:
 
 ---
 
-## Prerequisites
-
-| Requirement | Version | Notes |
-|---|---|---|
-| **Node.js** | ≥ 20 | Needed for the no-Docker path and local development |
-| **PostgreSQL** | ≥ 16, with `pgvector` | Needed for the no-Docker path |
-| **Python** | ≥ 3.11 | Only needed for local BGE without Docker, and for `evaluation/` |
-| **OS** | macOS / Linux | Windows works via Docker Desktop / WSL2 |
-| **Disk** | ~1 GB free | One-time download of `BAAI/bge-large-zh-v1.5` on first local run |
-| **OpenClaw** | ≥ 2026.3.1 | Declared as `peerDependencies` in [`package.json`](package.json) |
-
-Docker is optional. The Docker quick start is the fastest path because it brings up Postgres, server, workers, and BGE together; the no-Docker path is documented below for local installs.
-
-> **Choosing an embedding mode:** if you have a Qwen / OpenAI-compatible API key handy, `openai` mode skips the BGE download and starts in seconds. If you're running in an air-gapped or compliance-sensitive environment, pick `local`; pre-cache the Docker image and `BAAI/bge-large-zh-v1.5` model first, then Memsense can run without external embedding traffic.
-
----
-
 ## Quick Start
 
 ### 1. Choose an embedding mode
@@ -152,6 +135,23 @@ npm run smoke:api
 ```
 
 > A successful run prints the health / setup / pipeline / memory checks and ends with `[smoke] all api smoke checks passed`.
+
+---
+
+## Prerequisites
+
+| Requirement | Version | Notes |
+|---|---|---|
+| **Node.js** | ≥ 20 | Needed for the no-Docker path and local development |
+| **PostgreSQL** | ≥ 16, with `pgvector` | Needed for the no-Docker path |
+| **Python** | ≥ 3.11 | Only needed for local BGE without Docker, and for `evaluation/` |
+| **OS** | macOS / Linux | Windows works via Docker Desktop / WSL2 |
+| **Disk** | ~1 GB free | One-time download of `BAAI/bge-large-zh-v1.5` on first local run |
+| **OpenClaw** | ≥ 2026.3.1 | Declared as `peerDependencies` in [`package.json`](package.json) |
+
+Docker is optional. The Docker quick start is the fastest path because it brings up Postgres, server, workers, and BGE together; the no-Docker path is documented above for local installs.
+
+> **Choosing an embedding mode:** if you have a Qwen / OpenAI-compatible API key handy, `openai` mode skips the BGE download and starts in seconds. If you're running in an air-gapped or compliance-sensitive environment, pick `local`; pre-cache the Docker image and `BAAI/bge-large-zh-v1.5` model first, then Memsense can run without external embedding traffic.
 
 ---
 
