@@ -41,6 +41,12 @@ What you get:
 - **Debug recall live.** The dashboard shows search results, recent-memory fetches, prompt-preview assembly, `rrf_score`, routes, and `final_score`.
 - **Run self-hosted.** Postgres, workers, dashboard, and embeddings run in your environment with local BGE or any OpenAI-compatible embedding endpoint.
 
+### How Memsense Fits OpenClaw
+
+<p align="center">
+  <img alt="Memsense and OpenClaw integration flow" src="docs/assets/openclaw-integration-flow.png" width="100%" />
+</p>
+
 ---
 
 ## Prerequisites
