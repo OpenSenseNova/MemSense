@@ -44,7 +44,7 @@ What you get:
 ### How Memsense Fits OpenClaw
 
 <p align="center">
-  <img alt="Memsense and OpenClaw integration flow" src="docs/assets/openclaw-integration-flow.png" width="100%" />
+  <img alt="Memsense and OpenClaw integration flow" src="docs/assets/openclaw-integration-flow.jpg" width="100%" />
 </p>
 
 ---
@@ -290,7 +290,7 @@ day 23  human clicks promote         → score adjusted     memory_score 0.65
 ### Visual Dashboard
 
 <p align="center">
-  <img alt="Memsense Dashboard" src="docs/assets/dashboard-screenshot.jpg" width="100%" />
+  <img alt="Memsense Dashboard" src="docs/assets/dashboard-screenshot.png" width="100%" />
 </p>
 
 - **Prompt Injection Preview** — type a query and inspect the live search response plus the dashboard's prompt-fragment preview. The OpenClaw plugin performs the final production formatting in `index.ts`.
