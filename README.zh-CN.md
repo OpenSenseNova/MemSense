@@ -1,0 +1,586 @@
+<div align="center">
+
+# Memsense
+
+**给 OpenClaw agent 用的记忆插件，让每次会话不用从零开始。**
+
+<p>
+  <a href="README.md">English</a> ·
+  <a href="README.zh-CN.md"><strong>中文</strong></a>
+</p>
+
+<h2><a href="#快速开始">快速开始</a></h2>
+<p><strong>Docker 或无 Docker 模式，几条命令就能跑起来。</strong></p>
+
+<p>
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-22c55e" />
+  <img alt="self-hosted" src="https://img.shields.io/badge/self--hosted-f59e0b" />
+  <img alt="no external API" src="https://img.shields.io/badge/external%20API-not%20required-111827" />
+</p>
+
+</div>
+
+<p align="center">
+  <img alt="Memsense theme banner" src="docs/assets/theme-banner.svg" width="88%" />
+</p>
+
+<p align="center">
+  <img alt="Trajectory" src="docs/assets/card-trajectory.svg" width="31%" />
+  <img alt="Recall" src="docs/assets/card-recall.svg" width="31%" />
+  <img alt="Learning" src="docs/assets/card-learning.svg" width="31%" />
+</p>
+
+---
+
+## 概览
+
+Agent 在工作时会积累很多有用的信息：用户偏好、项目背景、已经试错过的方法、某次问题最后是怎么解决的。没有记忆，这些经验会随着会话结束一起消失，下一次又要重新解释、重新踩坑。
+
+Memsense 是一个 OpenClaw 记忆插件。它不会简单地把聊天记录全塞回上下文，而是把 agent 的工作过程整理成可复用的经验，在下一次需要时提前放进模型调用前的上下文里。你也可以在 dashboard 里看到它记住了什么、选中了什么、为什么会被带到这次请求里。
+
+你会得到：
+
+- **能记住有用经验的 agent。** 项目信息、用户偏好、踩过的坑、成功的处理方式，都可以被带到后续会话。
+- **适配 OpenClaw 的记忆插件。** Memsense 通过 OpenClaw 的 memory slot 接入，不需要重写 agent runtime。
+- **比回放聊天记录更少噪声。** 目标是给模型一小段真正相关的背景，而不是把历史消息整段堆进去。
+- **可检查的记忆召回。** dashboard 可以看到近期记忆、搜索结果、选中的上下文，以及最终进入 prompt 的内容。
+- **默认自托管。** 服务、数据库、worker、dashboard 都可以跑在你自己的环境里。
+
+### Memsense 如何接入 OpenClaw
+
+<p align="center">
+  <img alt="Memsense and OpenClaw integration flow" src="docs/assets/openclaw-integration-flow.jpg" width="100%" />
+</p>
+
+---
+
+## 快速开始
+
+### 1. 选择 embedding 模式
+
+| 模式 | 适合场景 | 需要 |
+|---|---|---|
+| `local` | 自托管，不希望走外部 embedding API | 推荐 Docker；第一次会下载 BGE 模型，约 1 GB |
+| `openai` | 想最快启动 | 在 `.env` 里配置 `MEMSENSE_OPENAI_API_KEY` |
+
+### 2. 启动 Memsense
+
+```bash
+cp .env.example .env
+bash scripts/bootstrap.sh local    # 本地 embedding；第一次会下载 BGE 模型，已有缓存则跳过
+# 或：
+bash scripts/bootstrap.sh openai   # 云端 embedding，先在 .env 设置 MEMSENSE_OPENAI_API_KEY
+```
+
+查看服务状态：
+
+```bash
+docker compose ps
+```
+
+> 第一次运行会下载 BGE 模型并构建服务镜像，通常需要几分钟。之后启动会快很多。
+
+<details>
+<summary>不用 Docker？macOS / Linux 可选路径</summary>
+
+```bash
+cp .env.example .env
+bash scripts/bootstrap-nodocker.sh local   # 或：...nodocker.sh openai
+bash scripts/start-bash.sh
+```
+
+macOS 下脚本会通过 Homebrew 安装 PostgreSQL 和 pgvector。Linux 下请先准备 Node.js 20+、PostgreSQL 16+、pgvector、Python 3 和 venv 支持。
+
+`bootstrap-nodocker.sh` 会安装依赖并初始化数据库；`start-bash.sh` 会启动 server、embedding worker、tag worker 和 Python BGE 服务。
+
+</details>
+
+<details>
+<summary>端口冲突？自定义 host port</summary>
+
+```bash
+MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
+```
+
+后续 URL 也要跟着改，例如 `http://127.0.0.1:18787/dashboard`。
+
+</details>
+
+### 3. 安装到 OpenClaw
+
+```bash
+openclaw plugins install -l <path-to-memsense>
+openclaw plugins enable memsense
+openclaw gateway restart
+```
+
+> `-l` 表示从本地路径做 linked install，适合开发和调试插件时使用。
+
+### 4. 绑定 memory slot
+
+```json
+{
+  "plugins": {
+    "entries": { "memsense": { "enabled": true } },
+    "slots":   { "memory": "memsense" }
+  }
+}
+```
+
+### 5. 打开 dashboard
+
+```text
+http://127.0.0.1:8787/dashboard?token=demo
+```
+
+> `demo` 是默认开发 token。如果要把服务暴露到 localhost 之外，请先修改 `MEMSENSE_DASHBOARD_TOKENS_JSON`。
+
+### 6. 跑一次 smoke test
+
+```bash
+MEMSENSE_SMOKE_BASE_URL=http://127.0.0.1:8787 \
+MEMSENSE_SMOKE_TOKEN=demo \
+npm run smoke:api
+```
+
+> 成功时会打印 health / setup / pipeline / memory 检查，最后以 `[smoke] all api smoke checks passed` 结束。
+
+---
+
+## 环境要求
+
+| 依赖 | 版本 | 说明 |
+|---|---|---|
+| **Node.js** | >= 20 | 无 Docker 模式和本地开发需要 |
+| **PostgreSQL** | >= 16，带 `pgvector` | 无 Docker 模式需要 |
+| **Python** | >= 3.11 | 仅本地 BGE 无 Docker 模式和 `evaluation/` 需要 |
+| **OS** | macOS / Linux | Windows 可通过 Docker Desktop / WSL2 使用 |
+| **磁盘** | 约 1 GB 可用空间 | local 模式第一次会下载 `BAAI/bge-large-zh-v1.5` |
+| **OpenClaw** | >= 2026.3.1 | 已在 [`package.json`](package.json) 的 `peerDependencies` 中声明 |
+
+Docker 不是必须的。Docker 快速开始是最省事的路径，因为它会一起启动 Postgres、server、workers 和 BGE。无 Docker 路径也在上面给出，适合本地安装。
+
+> 选择 embedding 模式：如果你手边有 Qwen / OpenAI-compatible API key，`openai` 模式可以跳过 BGE 下载，几秒内启动。如果你在离线环境或对数据外发很敏感，选 `local`；提前缓存 Docker 镜像和 `BAAI/bge-large-zh-v1.5` 模型后，Memsense 可以不走外部 embedding API。
+
+---
+
+## 核心概念
+
+下面这些是 Memsense 和普通“向量库 + RAG 记忆插件”的主要区别。这里会进入技术细节；前面的概览只讲它解决什么问题。
+
+### 1. 通过 OpenClaw hook 自动捕获，而不是让 agent 主动保存
+
+很多记忆插件要求 agent 在合适的时候调用 `memory.save(...)`。这很脆弱：agent 可能忘记调用，也可能保存错内容，或者把噪声写进记忆。
+
+Memsense 监听 OpenClaw 的生命周期事件：
+
+- `llm_input`：标准化用户输入，运行触发规则，暂存这次用户请求。
+- `llm_output`：拿到对应的 assistant 输出，构造成 canonical QA JSON，POST 到 `/v1/memory/save`。
+
+10 分钟窗口内，相同用户请求会在 chunk 层去重，所以重试不会污染记忆。**你不需要写捕获代码。**
+
+代码位置：[`index.ts`](index.ts) 的事件处理，和 [`src/capture/`](src/capture) 下的 `message-normalize.js`、`canonical-qa.js`、`chunk-builder.js`。
+
+### 2. 八路召回，不让 LLM 在背后决定记忆
+
+只对“整段对话”做一次向量检索太粗了。它容易把用户问题和 assistant 答案混在一起，也容易错过 ticket ID 这类词面命中。
+
+Memsense 会并行跑 **8 条召回路线**，再用确定性的方式融合结果：
+
+| # | 路线 | 匹配对象 |
+|---|---|---|
+| 1 | `vec_full` | 完整 QA embedding，也作为 MMR 去重基线 |
+| 2 | `vec_user` | 用户视角 embedding |
+| 3 | `vec_asst` | assistant 视角 embedding |
+| 4 | `vec_next_user` | 后续问题，在 chunk N+1 到来时回填 |
+| 5 | `lexical` | Postgres full-text search，覆盖 `task_tag` 和 `content` |
+| 6 | `facet_personal_info` | 提取出的 personal-info facet |
+| 7 | `facet_preferences` | 提取出的 preferences facet |
+| 8 | `facet_events` | 提取出的 events facet |
+
+融合使用 Reciprocal Rank Fusion，`k = 15`，然后计算 `final_score = rrf_score + 0.1 · memory_score`。第二轮会用 MMR 做多样性选择，当前参数是 `λ = 0.78`，重复阈值为 `0.94`。召回结果不是由 LLM 临时决定的，所以换模型后行为也更稳定。
+
+代码位置：[`src/server/service.js`](src/server/service.js) 里的 SQL RRF，和 [`src/server/retrieval/rerank.js`](src/server/retrieval/rerank.js) 里的 MMR。
+
+深入说明：[`docs/features/retrieval-algorithm.md`](docs/features/retrieval-algorithm.md)
+
+### 3. 记忆有类型，也有分数
+
+每个 chunk 都带 `memory_kind` 和 `[0, 1]` 范围内的 `memory_score`：
+
+| `memory_kind` | 适合存什么 |
+|---|---|
+| `stable` | 长期事实和身份信息，例如“prod DB 在 `db-prod-2`” |
+| `preference` | 用户偏好，例如“总结用 bullet points，不要长段落” |
+| `episodic` | 重要经历和决策，例如“第 1 天 CSV 解析因为 quoted comma 出错，后来改用 csv-parse” |
+| `ephemeral` | 短期状态，衰减最快 |
+
+`memory_score` 存在 `memory_chunks.score`。当前 runtime 会把新 chunk 初始设为 `0.5`；`promote_demote` 会按 `±0.15` 调整分数，`feedback` 会把结果标签记录到 `memory_events`，方便审计和后续评分工作。`forget` 会把 chunk 状态设为 `deleted`，让它不再参与 active retrieval。
+
+代码位置：[`src/worker/tag-worker.js`](src/worker/tag-worker.js) 负责 kind assignment；[`src/server/db/schema.sql`](src/server/db/schema.sql) 里定义了 `memory_events` 表。
+
+### 4. 异步增强，带重试和 DLQ
+
+捕获发生在热路径上，增强不应该阻塞 agent。Memsense 用两张 queue 表把它们拆开：
+
+- `embedding_jobs`：计算 full / user / assistant / next-user / facet payloads 的 embeddings。
+- `tag_jobs`：可选调用 tagger LLM，生成 tags、`memory_kind`、summary、facets。
+
+两类 worker 都使用 `FOR UPDATE SKIP LOCKED` 抢占任务，失败后指数退避重试，重试耗尽后进入 dead-letter queue，也就是 `embedding_dlq` / `tag_dlq`。`/v1/dashboard/pipeline_status` 会暴露 pending / running / failed 计数；如果需要看失败 payload 和错误详情，可以直接查 DLQ 表。
+
+代码位置：[`src/worker/index.js`](src/worker/index.js) 和 [`src/worker/tag-worker.js`](src/worker/tag-worker.js)。
+
+深入说明：[`docs/features/worker-retry-dlq.md`](docs/features/worker-retry-dlq.md)
+
+### 5. 可验证的自托管
+
+`bash scripts/bootstrap.sh local` 会一次性启动 Postgres、server、workers 和 BGE embedding container。local 模式没有托管控制面，也不需要外部 embedding API。第一次启动会从 Hugging Face 拉取 BGE 模型，并缓存到 Docker volume `memsense-hf`；之后可以直接从缓存运行，也可以用 `tcpdump` 检查运行期流量。
+
+如果你希望把 embedding 交给外部服务，可以设置 `MEMSENSE_EMBEDDING_PROVIDER=openai`，并指向任何 OpenAI-compatible endpoint，例如 Qwen / DashScope / OpenAI 等。local 和 cloud 模式可以原地切换，系统其他部分不需要变化。
+
+代码位置：[`Dockerfile.bge`](Dockerfile.bge) 和 [`docker-compose.yml`](docker-compose.yml)。
+
+深入说明：[`docs/features/local-bge-oneclick.md`](docs/features/local-bge-oneclick.md)
+
+---
+
+## 架构
+
+### 分层
+
+| 层 | 作用 |
+|---|---|
+| **Capture** | 把 agent history 标准化成 QA chunks，并在 10 分钟窗口内去重。 |
+| **Enrichment** | 异步 worker 计算 full/user/assistant/next-user/facet embeddings，并补充 tags、memory kind、facets。 |
+| **Retrieval** | 8-route search，包含 4 条 vector、1 条 lexical、3 条 facet，再做 RRF rank fusion。 |
+| **Selection** | 默认使用 chunk-level RRF + MMR diversity，`λ=0.78`；session-first hybrid scoring 只在用 `--mode hybrid` 导入的 evaluation 数据上启用。 |
+
+### 关键数据表
+
+表结构定义在 [`src/server/db/schema.sql`](src/server/db/schema.sql)，通过 `npm run db:migrate` 自动应用。
+
+| 表 | 用途 |
+|---|---|
+| `memory_chunks` | canonical chunks：content、kind、tags、facets、score、status |
+| `memory_chunk_embeddings` | 每个 chunk 的向量：full、user、assistant、next-user 和 3 个 facet columns |
+| `memory_events` | capture 和 feedback 的 append-only audit log |
+| `embedding_jobs` / `embedding_dlq` | 异步 embedding queue 和 dead-letter |
+| `tag_jobs` / `tag_dlq` | 异步 tagging queue 和 dead-letter |
+
+完整系统图：[`docs/assets/system-flowchart.png`](docs/assets/system-flowchart.png)
+
+架构说明：[`docs/features/architecture-overview.md`](docs/features/architecture-overview.md)
+
+<details>
+<summary><b>示例：从一次 agent 出错，到变成下一次可用的经验</b></summary>
+
+第 1 天，data-ops agent 收到任务：`parse report_q1.csv`。
+
+```diff
+  USER    parse report_q1.csv and summarise revenue by client.
+  AGENT   reads file → naive split(",") → breaks on quoted commas.
+- USER    ✗ numbers are off — "Client, Inc" got split into two columns.
++ AGENT   switches to csv-parse library → re-runs → correct result.
+```
+
+Memsense 会把这段过程整理成一条记忆。第 12 天，另一个任务来了：`clean up customers_export.csv`。在 prompt 构建前，hook 会注入类似这样的上下文：
+
+```xml
+<relevant_context source="memsense" matched_routes="vec_user,lex,facet_ev">
+  <memory kind="episodic" score="0.70" rrf="0.31">
+    <task_tag>CSV with quoted commas — don't use naive split; use csv-parse</task_tag>
+  </memory>
+</relevant_context>
+```
+
+agent 会直接使用上次验证过的 `csv-parse`，不用再踩同一个坑。当前 runtime 里，复用结果可以通过 `feedback` 记录；`promote_demote` API 可以把这条记忆的分数提高或降低 `0.15`。
+
+```text
+day 1   USER corrects agent          → memory captured     memory_score 0.50
+day 12  recalled → reused → success  → feedback recorded  memory_score 0.50
+day 18  recalled again → success     → feedback recorded  memory_score 0.50
+day 23  human clicks promote         → score adjusted     memory_score 0.65
+```
+
+</details>
+
+### 可视化 Dashboard
+
+<p align="center">
+  <img alt="Memsense Dashboard" src="docs/assets/dashboard-screenshot.png" width="100%" />
+</p>
+
+- **Prompt Injection Preview**：输入 query，查看实时 search response，以及 dashboard 预览出的 prompt fragment。OpenClaw 插件最终会在 [`index.ts`](index.ts) 里完成生产格式化。
+- **memory_search**：发起语义搜索，检查每条结果的 `rrf_score`、matched routes 和 `final_score`。
+- **memory_fetch_recent**：拉取最近捕获的 chunks，确认刚刚发生的内容是否被记住。
+
+---
+
+## 评测
+
+我们在 [LoCoMo](https://github.com/snap-stanford/locomo) long-range dialogue benchmark 上测试了 Memsense，共 1,540 个 case，模型为 `doubao-seed-2.0-pro-260215`。评测脚本在 [`evaluation/`](evaluation/)。
+
+> [!IMPORTANT]
+> **LoCoMo task completion 73.77%**，比 OpenViking 高 21.7pp，比 OpenClaw memory-core 高 38.1pp。
+
+| 配置 | Task Completion | Input Tokens | Completion / 1M tokens |
+|---|:---:|---:|:---:|
+| OpenClaw (memory-core) | 35.65% | 24,611,530 | 1.45 |
+| OpenClaw + LanceDB (-memory-core) | 44.55% | 51,574,530 | 0.86 |
+| OpenClaw + OpenViking Plugin (-memory-core) | 52.08% |  4,264,396 | 12.21 |
+| OpenClaw + OpenViking Plugin (+memory-core) | 51.23% |  2,099,622 | 24.40 |
+| **OpenClaw + Memsense** | **73.77%** | **3,506,310** | **21.04** |
+
+结论：
+
+- 相比 OpenClaw memory-core：**task completion +38.1pp**，input-token 成本约为 **1/7**。
+- 相比 OpenViking (-memory-core)：**task completion +21.7pp**，同时使用更少 tokens。
+
+### 复现评测结果
+
+```bash
+# 1. 把 LoCoMo conversations 导入 Memsense，写入 session + turn chunks
+uv run python evaluation/ingest.py ./evaluation/locomo10.json \
+    --task memsense_eval \
+    --user memsense_eval \
+    --dashboard-token demo \
+    --mode hybrid \
+    --generate-tags
+
+# 2. 通过 OpenClaw gateway 在导入的 sessions 上跑 QA
+uv run python evaluation/qa.py ./evaluation/locomo10.json \
+    --base-url http://127.0.0.1:8899 \
+    --task memsense_eval \
+    --user memsense_eval \
+    --token YOUR_OPENCLAW_GATEWAY_TOKEN \
+    --overwrite \
+    --parallel 4
+
+# 3. 用 LLM judge 评估回答
+uv run python evaluation/judge.py output/qa.memsense_eval.jsonl \
+    --base-url https://ark.cn-beijing.volces.com/api/v3 \
+    --token YOUR_LLM_TOKEN \
+    --model doubao-seed-2-0-mini-260215 \
+    --concurrency 5 \
+    --output output/grades.json
+```
+
+推荐使用 `--mode hybrid`，它会启用 session-first scoring。`--mode session` 是 full-session baseline；`--mode turn` 只用于 ablation。`ingest.py` 默认访问 Memsense API：`http://127.0.0.1:8787`；`qa.py` 默认访问 OpenClaw Responses-compatible gateway：`http://127.0.0.1:8899`。完整说明见 [`evaluation/README.md`](evaluation/README.md)。
+
+---
+
+## 配置参考
+
+所有设置都放在 `.env`。Docker 会通过 `docker-compose.yml` 读取它；无 Docker 脚本会直接 source 它。仓库里的 [`.env.example`](.env.example) 已经可以直接用于 local 模式。
+
+**local 模式最小配置：** `MEMSENSE_DATABASE_URL`、`MEMSENSE_EMBEDDING_PROVIDER=bge_http`、`MEMSENSE_BGE_ENDPOINT`、`MEMSENSE_DASHBOARD_TOKENS_JSON`
+
+**cloud 模式最小配置：** `MEMSENSE_DATABASE_URL`、`MEMSENSE_EMBEDDING_PROVIDER=openai`、`MEMSENSE_OPENAI_BASE_URL`、`MEMSENSE_OPENAI_API_KEY`、`MEMSENSE_EMBEDDING_MODEL`、`MEMSENSE_DASHBOARD_TOKENS_JSON`
+
+### 核心配置
+
+| 变量 | 默认值 | 作用 |
+|---|---|---|
+| `MEMSENSE_DATABASE_URL` | `postgresql://127.0.0.1:5432/memsense` | Postgres + pgvector 连接串 |
+| `MEMSENSE_PORT` | `8787` | HTTP server 端口，container 内 |
+| `MEMSENSE_HOST_PORT` | `8787` | Docker host-port mapping，server 用 |
+| `MEMSENSE_POSTGRES_PORT` | `54329` | Docker host-port mapping，Postgres 用 |
+| `MEMSENSE_DASHBOARD_TOKENS_JSON` | `{"demo":"admin"}` | RBAC token map：`token → role`，支持 viewer / operator / admin |
+| `MEMSENSE_DB_POOL_MAX` | `20` | 每个进程的 Postgres 最大连接数 |
+
+### Embedding 选择
+
+| 变量 | 默认值 | 作用 |
+|---|---|---|
+| `MEMSENSE_EMBEDDING_PROVIDER` | `.env.example` 中为 `bge_http` | `bge_http` 表示本地 BGE，`openai` 表示云端 |
+| `MEMSENSE_EMBEDDING_MAX_CHARS` | `6000` | embedding 前的文本截断长度 |
+
+### 本地 BGE embedding，`provider=bge_http`
+
+| 变量 | 默认值 | 作用 |
+|---|---|---|
+| `MEMSENSE_BGE_ENDPOINT` | `http://127.0.0.1:8080/embed` | embedding worker POST payload 的地址 |
+| `MEMSENSE_BGE_MODEL` | `BAAI/bge-large-zh-v1.5` | Hugging Face model id，第一次运行会自动下载 |
+| `MEMSENSE_BGE_PORT` | `8080` | BGE container 内端口 |
+| `MEMSENSE_BGE_HOST_PORT` | `8088` | BGE container 的 Docker host-port mapping |
+| `MEMSENSE_BGE_HOST` | `0.0.0.0` | BGE bind address |
+| `MEMSENSE_BGE_SAVE_DIR` | `/data` | container 内模型缓存目录 |
+
+### OpenAI-compatible embedding，`provider=openai`
+
+| 变量 | 默认值 | 作用 |
+|---|---|---|
+| `MEMSENSE_OPENAI_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | 任意 OpenAI-compatible endpoint |
+| `MEMSENSE_OPENAI_API_KEY` | 空 | Bearer token；`provider=openai` 时必填 |
+| `MEMSENSE_EMBEDDING_MODEL` | `text-embedding-v4` | embedding model id |
+
+### Worker 配置
+
+| 变量 | 默认值 | 作用 |
+|---|---|---|
+| `MEMSENSE_WORKER_MAX_ATTEMPTS` | `5` | embedding job 进入 DLQ 前的最大重试次数 |
+| `MEMSENSE_WORKER_IDLE_MS` | `800` | embedding queue 轮询间隔，毫秒 |
+| `MEMSENSE_TAG_WORKER_MAX_ATTEMPTS` | `4` | tag job 进入 DLQ 前的最大重试次数 |
+| `MEMSENSE_TAG_WORKER_IDLE_MS` | `1200` | tag queue 轮询间隔，毫秒 |
+| `MEMSENSE_TAG_RETRY` | `3` | tagger client 内部单次调用重试预算 |
+
+### 可选 tagger LLM
+
+不设置也可以运行。capture 和 retrieval 仍然可用，只是 `tags` 和 facets 会为空。
+
+| 变量 | 默认值 | 作用 |
+|---|---|---|
+| `MEMSENSE_TAGGER_BASE_URL` | 空 | tagger model 的 OpenAI-compatible endpoint |
+| `MEMSENSE_TAGGER_API_KEY` | 空 | tagger 的 Bearer token |
+| `MEMSENSE_TAGGER_MODEL` | 空 | tagger model id |
+
+---
+
+## API 参考
+
+成功时，所有接口返回 `{ "ok": true, "data": ... }`。失败时返回 `{ "ok": false, "error": "..." }`，HTTP 状态码为 500。
+
+**鉴权。** Dashboard endpoints 需要 `x-memsense-token: <token>` header，或者 `?token=<token>` query string。token 到 role 的映射来自 `MEMSENSE_DASHBOARD_TOKENS_JSON`。当前版本里，Memory endpoints `/v1/memory/*` 没有 token gate；如果要暴露到 localhost 之外，请在 gateway 层加保护。
+
+路由定义在 [`src/server/app.js`](src/server/app.js)。
+
+### Memory operations
+
+| Method | Path | 作用 |
+|---|---|---|
+| `POST` | `/v1/memory/save` | 捕获 canonical QA chunk，10 分钟内自动去重 |
+| `POST` | `/v1/memory/search` | 8-route RRF + MMR retrieval，返回 top-k chunks，以及 `rrf_score`、`final_score`、matched routes |
+| `POST` | `/v1/memory/fetch_recent` | 按 `(tenant, scope, user/agent/session)` 拉取最近 chunks |
+| `POST` | `/v1/memory/search_by_time` | 按时间范围过滤列表 |
+| `POST` | `/v1/memory/feedback` | 在 audit log 中记录 outcome label |
+| `POST` | `/v1/memory/promote_demote` | 按 delta 调整 `memory_score` |
+| `POST` | `/v1/memory/forget` | soft-delete 一个 chunk，状态变为 `deleted` |
+| `POST` | `/v1/memory/audit` | 读取 `memory_events` audit log |
+
+### Dashboard operations
+
+| Method | Path | Role | 作用 |
+|---|---|---|---|
+| `GET`  | `/v1/dashboard/contract` | viewer | UI schema，包含 filters、columns、actions |
+| `POST` | `/v1/dashboard/overview` | viewer | dashboard list view 的 stats 和 recent chunks |
+| `POST` | `/v1/dashboard/set_status` | operator | archive / restore 一个 chunk |
+| `GET`  | `/v1/dashboard/pipeline_status` | viewer | job queue 健康状态：pending / running / failed counts |
+| `GET`  | `/dashboard` | - | 静态 HTML test console |
+
+### System
+
+| Method | Path | 作用 |
+|---|---|---|
+| `GET`  | `/healthz` | Liveness probe，也接入了 Docker healthcheck |
+| `GET`  | `/v1/system/setup-status` | embedding-provider 配置检查，并给出可执行的下一步 |
+
+---
+
+## OpenClaw 插件集成
+
+### Plugin manifest
+
+[`openclaw.plugin.json`](openclaw.plugin.json) 把 Memsense 声明为 `memory` 类型插件：
+
+```json
+{
+  "id": "memsense",
+  "kind": "memory",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled":    { "type": "boolean", "default": true },
+      "localMode":  { "type": "boolean", "default": true },
+      "serviceUrl": { "type": "string" },
+      "timeoutMs":  { "type": "integer", "minimum": 50, "default": 180 },
+      "maxTopK":    { "type": "integer", "minimum": 1, "maximum": 20, "default": 8 }
+    }
+  }
+}
+```
+
+- `localMode`：为 true 时，插件会在 `start` 阶段通过 `scripts/start-bash.sh` 拉起 Memsense server。
+- `serviceUrl`：覆盖 API URL；不设置时读取 `MEMSENSE_API_URL`，默认 `http://127.0.0.1:8787`。
+- `timeoutMs`：`before_prompt_build` search 的软超时预算；超时后 LLM 调用会继续，只是不注入记忆。
+- `maxTopK`：暴露给 agent 的 `top_k` 上限。
+
+### Lifecycle hooks
+
+[`index.ts`](index.ts) 注册了三个 hook：
+
+| Hook | 时机 | 做什么 |
+|---|---|---|
+| `llm_input` | 用户 turn 到达 | 去掉旧的 `<relevant_context>` block，标准化输入，运行 trigger heuristic，并按 `session_id` 暂存一次 pending auto-save |
+| `llm_output` | assistant turn 到达 | 和 pending user turn 配对，构建 canonical QA JSON，POST `/v1/memory/save` |
+| `before_prompt_build` | 下一次 LLM 调用前 | 用标准化 prompt POST `/v1/memory/search`；如果有结果，返回 `{ prependContext: "<relevant_context>...</relevant_context>" }` |
+
+### 注册的 tools 和 CLI
+
+| 类型 | 名称 | 说明 |
+|---|---|---|
+| Tool | `memory_search` | Top-k memory search；和 `/v1/memory/search` 表面一致，但移除了 `embedding` 字段 |
+| Tool | `memory_fetch_recent` | 最近 chunks；和 `/v1/memory/fetch_recent` 表面一致 |
+| Service | `memsense-server` | 后台 server lifecycle；`start` 使用 `scripts/start-bash.sh`，`stop` 使用 `scripts/stop-bash.sh` |
+| CLI | `memsense:ping` | 检查插件是否已加载 |
+
+[快速开始第 4 步](#4-绑定-memory-slot) 的 slot binding 会告诉 OpenClaw：把 agent 的 `memory` slot 路由到 `memsense`。
+
+---
+
+## Roadmap：从记忆到持续学习
+
+[查看路线图](docs/assets/roadmap.png)
+
+Memsense 会用结构化 metadata 捕获每条 trajectory，包括 kind、tags、facets、outcome score、events。这为下一步打基础：**把整理后的 trajectory 作为信号，回流到模型训练中**，也就是 Capture → Refine Signal → Learn Model。
+
+这个 section 之前的能力是现在已经可运行的；Roadmap 是后续方向。
+
+---
+
+## 文档
+
+- [Architecture overview](docs/features/architecture-overview.md)
+- [Retrieval algorithm：RRF + MMR](docs/features/retrieval-algorithm.md)
+- [Embedding & search internals](docs/features/embedding-search.md)
+- [Dashboard & RBAC](docs/features/dashboard-rbac.md)
+- [Worker retry / DLQ](docs/features/worker-retry-dlq.md)
+- [Local BGE one-click setup](docs/features/local-bge-oneclick.md)
+- [API smoke test](docs/features/api-smoke-test.md)
+- [No-Docker quickstart](docs/features/no-docker-quickstart.md)
+- [Evaluation README](evaluation/README.md)
+
+---
+
+## 社区与贡献
+
+Memsense 还在早期阶段。最有帮助的参与方式：
+
+- Star 和 watch 这个 repo，方便我们判断优先级。
+- 提 issue 时请尽量带上复现步骤。具体的 bug report 比泛泛的 feature wish 更有用。
+- 在你的 stack 上跑一遍 eval，把结果分享出来。和预期不一样的结果尤其有价值。
+
+### 参与开发
+
+```bash
+npm test              # Node native test runner；test/ 下有 21 个 test files
+npm run smoke:api     # 对运行中的 server 做端到端 smoke test
+npm run db:migrate    # 把 src/server/db/schema.sql 应用到 MEMSENSE_DATABASE_URL
+npm run server        # 只启动 HTTP server
+npm run worker        # 只启动 embedding worker
+npm run tag-worker    # 只启动 tag worker
+```
+
+做非小改动前，建议先读：
+
+1. [`docs/features/architecture-overview.md`](docs/features/architecture-overview.md)：4-layer pipeline。
+2. [`docs/features/retrieval-algorithm.md`](docs/features/retrieval-algorithm.md)：RRF、MMR 和 `final_score` 公式。
+3. [`src/server/service.js`](src/server/service.js) 和 [`src/server/retrieval/rerank.js`](src/server/retrieval/rerank.js)：retrieval 真正发生的地方。
+
+欢迎 PR。涉及行为变化时，请在 `test/*.test.mjs` 下加测试，并在 push 前运行 `npm test`。
+
+---
+
+## 许可证
+
+[MIT](LICENSE).

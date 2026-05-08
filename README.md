@@ -2,7 +2,12 @@
 
 # Memsense
 
-**Living memory for agents — turn every trajectory into experience.**
+**Memory for OpenClaw agents that should not start from zero every time.**
+
+<p>
+  <a href="README.md"><strong>English</strong></a> ·
+  <a href="README.zh-CN.md">中文</a>
+</p>
 
 <h2><a href="#quick-start">Quick Start</a></h2>
 <p><strong>Start with Docker or no-Docker mode in a few commands.</strong></p>
@@ -29,17 +34,17 @@
 
 ## Overview
 
-Agents learn useful context while they work: project names, user preferences, failed approaches, and decisions that should carry into the next session. Without memory, that experience disappears as soon as the session ends.
+Agents pick up useful context while they work: what the user cares about, which approaches already failed, what decisions were made, and what worked last time. Without memory, that experience disappears when the session ends.
 
-Memsense captures structured agent turns, scores them, and recalls them through a deterministic retrieval pipeline you can inspect. It is built for agent experience, not raw transcript dumping.
+Memsense is an OpenClaw memory plugin that turns what happened during a run into reusable experience. It is not a raw chat-log bucket. It keeps the parts that can help a future run, brings back a small amount of relevant context before the model call, and lets you inspect why that context was selected.
 
 What you get:
 
-- **Capture useful turns automatically.** OpenClaw lifecycle hooks write canonical QA chunks without asking the agent to call a save tool.
-- **Recall deterministically.** 8-route RRF + MMR search decides what comes back; no LLM chooses memories behind the scenes.
-- **Keep memory typed and scored.** Chunks are classified as `stable`, `preference`, `episodic`, or `ephemeral`, with promote / demote controls and feedback audit events.
-- **Debug recall live.** The dashboard shows search results, recent-memory fetches, prompt-preview assembly, `rrf_score`, routes, and `final_score`.
-- **Run self-hosted.** Postgres, workers, dashboard, and embeddings run in your environment with local BGE or any OpenAI-compatible embedding endpoint.
+- **An agent that remembers useful work.** Project facts, user preferences, past mistakes, and successful fixes can carry into the next session.
+- **Memory that fits OpenClaw.** Memsense plugs into the OpenClaw memory slot, so the agent runtime does not need to be rewritten.
+- **Less noise than transcript replay.** The goal is compact, relevant context, not dumping every previous message back into the prompt.
+- **Recall you can inspect.** The dashboard shows what was remembered, what was selected, and how it reaches the model-facing prompt.
+- **Self-hosted by default.** Run the memory service, database, workers, and dashboard in your own environment.
 
 ### How Memsense Fits OpenClaw
 
