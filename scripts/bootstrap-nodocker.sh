@@ -76,6 +76,7 @@ fi
 # Sensible defaults for no-docker mode.
 upsert_env MEMSENSE_DATABASE_URL 'postgresql://127.0.0.1:5432/memsense'
 upsert_env MEMSENSE_PORT '8787'
+upsert_env MEMSENSE_API_URL 'http://127.0.0.1:8787'
 upsert_env MEMSENSE_DASHBOARD_TOKENS_JSON '{"demo":"admin"}'
 
 npm install

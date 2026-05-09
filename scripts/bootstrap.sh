@@ -42,6 +42,7 @@ HOST_PORT="${MEMSENSE_HOST_PORT:-${MEMSENSE_PORT:-8787}}"
 
 upsert_env MEMSENSE_PORT '8787'
 upsert_env MEMSENSE_HOST_PORT "$HOST_PORT"
+upsert_env MEMSENSE_API_URL "http://127.0.0.1:${HOST_PORT}"
 upsert_env MEMSENSE_DASHBOARD_TOKENS_JSON '{"demo":"admin"}'
 
 if [[ "$STRATEGY" == "openai" ]]; then

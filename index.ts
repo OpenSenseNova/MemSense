@@ -1,5 +1,6 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { request as httpRequest } from "node:http";
@@ -8,9 +9,43 @@ import { request as httpsRequest } from "node:https";
 import { TriggerPipeline } from "./src/trigger/trigger-pipeline.js";
 import { normalizeNaturalText, buildQaFromHistory, contentToText } from "./src/capture/message-normalize.js";
 import { buildCanonicalQaJson, canonicalizeUserText, selectFinalAssistantText } from "./src/capture/canonical-qa.js";
-const MEMSENSE_API_URL = process.env.MEMSENSE_API_URL || "http://127.0.0.1:8787";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function stripEnvQuotes(value: string): string {
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    return value.slice(1, -1);
+  }
+  return value;
+}
+
+function loadDotEnvSync() {
+  const envPath = join(__dirname, ".env");
+  if (!existsSync(envPath)) return;
+  const text = readFileSync(envPath, "utf8");
+  for (const rawLine of text.split(/\r?\n/)) {
+    if (!rawLine.trim() || rawLine.trim().startsWith("#")) continue;
+    const match = rawLine.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (!match) continue;
+    const [, key, rawValue] = match;
+    if (process.env[key] != null) continue;
+    process.env[key] = stripEnvQuotes(rawValue.trim());
+  }
+}
+
+loadDotEnvSync();
+
+function normalizeBaseUrl(url: string): string {
+  return String(url || "").replace(/\/+$/, "");
+}
+
+function resolveMemsenseApiUrl(): string {
+  if (process.env.MEMSENSE_API_URL) return normalizeBaseUrl(process.env.MEMSENSE_API_URL);
+  const hostPort = process.env.MEMSENSE_HOST_PORT || process.env.MEMSENSE_PORT || "8787";
+  return `http://127.0.0.1:${hostPort}`;
+}
+
+let MEMSENSE_API_URL = resolveMemsenseApiUrl();
 
 function directFetch(url: string, options: { method?: string; body?: string } = {}): Promise<{ ok: boolean; status: number; json: () => Promise<any> }> {
   return new Promise((resolve, reject) => {
@@ -46,6 +81,40 @@ function directFetch(url: string, options: { method?: string; body?: string } = 
     if (options.body) req.write(options.body);
     req.end();
   });
+}
+
+async function isMemsenseApiHealthy() {
+  try {
+    const res = await directFetch(`${MEMSENSE_API_URL}/healthz`);
+    if (!res.ok) return false;
+    const json = await res.json();
+    return json?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+function isDockerBootstrapEnv() {
+  const bgeEndpoint = String(process.env.MEMSENSE_BGE_ENDPOINT || "");
+  return Boolean(process.env.MEMSENSE_HOST_PORT) || /^https?:\/\/bge(?::|\/)/.test(bgeEndpoint);
+}
+
+async function shouldStartLocalService(ctx: any, pluginServiceMode?: string) {
+  const mode = String(process.env.MEMSENSE_SERVICE_MODE || pluginServiceMode || "auto").toLowerCase();
+  if (["external", "none", "off", "false", "0"].includes(mode)) {
+    ctx.logger.info(`memsense service autostart disabled; using ${MEMSENSE_API_URL}`);
+    return false;
+  }
+  if (await isMemsenseApiHealthy()) {
+    ctx.logger.info(`memsense API already healthy at ${MEMSENSE_API_URL}; local service start skipped`);
+    return false;
+  }
+  if (mode === "local" || mode === "managed") return true;
+  if (isDockerBootstrapEnv()) {
+    ctx.logger.warn(`memsense Docker-mode env detected but ${MEMSENSE_API_URL}/healthz is not healthy; run scripts/bootstrap.sh instead of starting local processes`);
+    return false;
+  }
+  return true;
 }
 
 async function getSetupStatusHint() {
@@ -221,14 +290,33 @@ export default {
   description: "Memsense memory plugin for OpenClaw",
   kind: "memory",
   register(api: OpenClawPluginApi) {
+    const pluginConfig = ((api as any).pluginConfig && typeof (api as any).pluginConfig === "object")
+      ? (api as any).pluginConfig as Record<string, unknown>
+      : {};
+    const serviceUrl = typeof pluginConfig.serviceUrl === "string" ? pluginConfig.serviceUrl.trim() : "";
+    if (serviceUrl) MEMSENSE_API_URL = normalizeBaseUrl(serviceUrl);
+    const pluginServiceMode = typeof pluginConfig.serviceMode === "string"
+      ? pluginConfig.serviceMode
+      : pluginConfig.localMode === false
+        ? "external"
+        : undefined;
+    let localServiceStarted = false;
+
     api.registerService({
       id: "memsense-server",
       async start(ctx) {
+        if (!(await shouldStartLocalService(ctx, pluginServiceMode))) return;
         const scriptPath = join(__dirname, "scripts", "start-bash.sh");
-        spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit", detached: true });
-        ctx.logger.info("memsense server started");
+        const child = spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit", detached: true });
+        child.unref();
+        localServiceStarted = true;
+        ctx.logger.info(`memsense local service start requested; API URL ${MEMSENSE_API_URL}`);
       },
       async stop(ctx) {
+        if (!localServiceStarted) {
+          ctx.logger.info("memsense local service stop skipped; this plugin instance did not start local services");
+          return;
+        }
         const scriptPath = join(__dirname, "scripts", "stop-bash.sh");
         spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit" });
         ctx.logger.info("memsense server stopped");

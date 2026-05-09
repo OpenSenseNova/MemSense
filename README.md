@@ -98,7 +98,7 @@ On macOS, Homebrew installs PostgreSQL + pgvector automatically. On Linux, insta
 MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 ```
 
-Update all subsequent URLs accordingly (e.g. `http://127.0.0.1:18787/dashboard`).
+`bootstrap.sh` also writes `MEMSENSE_API_URL=http://127.0.0.1:<host-port>` into `.env`, so the OpenClaw plugin calls the same port. Update all subsequent URLs accordingly (e.g. `http://127.0.0.1:18787/dashboard`).
 
 </details>
 
@@ -111,6 +111,7 @@ openclaw gateway restart
 ```
 
 > `-l` does a linked install from a local path, useful while iterating on the plugin.
+> If the gateway service is not installed yet, start/configure it first (`openclaw gateway install` or `openclaw gateway --allow-unconfigured` for a local smoke run). If an older `memsense` install already exists, uninstall it or use a clean profile before installing this branch.
 
 ### 4. Bind the memory slot
 
@@ -479,18 +480,20 @@ All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "enabled":    { "type": "boolean", "default": true },
-      "localMode":  { "type": "boolean", "default": true },
-      "serviceUrl": { "type": "string" },
-      "timeoutMs":  { "type": "integer", "minimum": 50, "default": 180 },
-      "maxTopK":    { "type": "integer", "minimum": 1, "maximum": 20, "default": 8 }
+      "enabled":     { "type": "boolean", "default": true },
+      "serviceMode": { "type": "string", "enum": ["auto", "external", "local"], "default": "auto" },
+      "localMode":   { "type": "boolean" },
+      "serviceUrl":  { "type": "string" },
+      "timeoutMs":   { "type": "integer", "minimum": 50, "default": 180 },
+      "maxTopK":     { "type": "integer", "minimum": 1, "maximum": 20, "default": 8 }
     }
   }
 }
 ```
 
-- `localMode` — when true, the plugin spawns the Memsense server on `start` via `scripts/start-bash.sh`.
-- `serviceUrl` — override the API URL (otherwise reads `MEMSENSE_API_URL`, default `http://127.0.0.1:8787`).
+- `serviceMode` — `auto` first connects to an already-running API; `external` never starts local processes; `local` starts no-Docker local services via `scripts/start-bash.sh`.
+- `localMode` — deprecated compatibility flag; use `serviceMode`.
+- `serviceUrl` — override the API URL (otherwise reads `MEMSENSE_API_URL`, then `MEMSENSE_HOST_PORT` / `MEMSENSE_PORT`).
 - `timeoutMs` — soft budget for the `before_prompt_build` search; on overrun, the LLM call proceeds without injection.
 - `maxTopK` — hard ceiling for the `top_k` exposed to agents.
 
@@ -510,7 +513,7 @@ All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false
 |---|---|---|
 | Tool | `memory_search` | Top-k memory search; same surface as `/v1/memory/search`, with `embedding` field stripped |
 | Tool | `memory_fetch_recent` | Recent chunks; same surface as `/v1/memory/fetch_recent` |
-| Service | `memsense-server` | Background server lifecycle (`start` via `scripts/start-bash.sh`, `stop` via `scripts/stop-bash.sh`) |
+| Service | `memsense-server` | Background lifecycle; in Docker mode it connects to the running API, in no-Docker local mode it can start/stop via `scripts/start-bash.sh` / `scripts/stop-bash.sh` |
 | CLI | `memsense:ping` | Sanity check that the plugin is loaded |
 
 The slot binding in [Quick Start step 4](#4-bind-the-memory-slot) tells OpenClaw to route the agent's `memory` slot to `memsense`.
@@ -552,7 +555,8 @@ Memsense is early. The fastest ways to help:
 ### Working on the code
 
 ```bash
-npm test              # Node native test runner; 21 test files in test/
+npm ci                # Install local deps for no-Docker development and tests
+npm test              # Node native test runner; 22 test files in test/
 npm run smoke:api     # End-to-end smoke against a running server
 npm run db:migrate    # Apply src/server/db/schema.sql to MEMSENSE_DATABASE_URL
 npm run server        # Start the HTTP server only

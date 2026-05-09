@@ -1,0 +1,7 @@
+.git
+node_modules
+.runtime
+.venv-bge
+.models
+npm-debug.log*
+.DS_Store

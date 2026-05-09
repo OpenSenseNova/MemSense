@@ -244,6 +244,23 @@ function uniqueRowsByChunkId(rows) {
   return out;
 }
 
+export function stripSearchInternalFields(chunk) {
+  if (!chunk || typeof chunk !== 'object') return chunk;
+  const { embedding, ...publicChunk } = chunk;
+  if (Array.isArray(publicChunk.neighbors)) {
+    publicChunk.neighbors = publicChunk.neighbors.map((neighbor) => {
+      if (!neighbor || typeof neighbor !== 'object') return neighbor;
+      const { embedding: _embedding, ...publicNeighbor } = neighbor;
+      return publicNeighbor;
+    });
+  }
+  return publicChunk;
+}
+
+function toPublicSearchChunks(chunks) {
+  return (chunks || []).map(stripSearchInternalFields);
+}
+
 export async function searchChunks({ tenant_id, scope, session_id, agent_id, user_id, query_text, top_k = 4 }) {
   const q = String(query_text || '').trim();
   console.log('[memsense-search] query:', q.slice(0, 100));
@@ -425,7 +442,7 @@ export async function searchChunks({ tenant_id, scope, session_id, agent_id, use
       },
     }));
     console.log('[memsense-search] final session-first result:', final.length, 'chunks');
-    return final;
+    return toPublicSearchChunks(final);
   }
 
   // Phase 2 fallback: MMR 去重，返回 top_k
@@ -489,7 +506,7 @@ export async function searchChunks({ tenant_id, scope, session_id, agent_id, use
   }
   console.log('[memsense-search] neighbor expansion done');
 
-  return final;
+  return toPublicSearchChunks(final);
 }
 
 export async function searchByTime({ tenant_id, scope, from_ts, to_ts, limit = 20, field = 'updated_at' }) {
