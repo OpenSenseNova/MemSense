@@ -1,6 +1,6 @@
 <div align="center">
 
-# Memsense
+# MemSense
 
 **Memory for OpenClaw agents that should not start from zero every time.**
 
@@ -21,7 +21,7 @@
 </div>
 
 <p align="center">
-  <img alt="Memsense theme banner" src="docs/assets/theme-banner.svg" width="88%" />
+  <img alt="MemSense theme banner" src="docs/assets/theme-banner.svg" width="88%" />
 </p>
 
 <p align="center">
@@ -36,20 +36,20 @@
 
 Agents pick up useful context while they work: what the user cares about, which approaches already failed, what decisions were made, and what worked last time. Without memory, that experience disappears when the session ends.
 
-Memsense is an OpenClaw memory plugin that turns what happened during a run into reusable experience. It is not a raw chat-log bucket. It keeps the parts that can help a future run, brings back a small amount of relevant context before the model call, and lets you inspect why that context was selected.
+MemSense is an OpenClaw memory plugin that turns what happened during a run into reusable experience. It is not a raw chat-log bucket. It keeps the parts that can help a future run, brings back a small amount of relevant context before the model call, and lets you inspect why that context was selected.
 
 What you get:
 
 - **An agent that remembers useful work.** Project facts, user preferences, past mistakes, and successful fixes can carry into the next session.
-- **Memory that fits OpenClaw.** Memsense plugs into the OpenClaw memory slot, so the agent runtime does not need to be rewritten.
+- **Memory that fits OpenClaw.** MemSense plugs into the OpenClaw memory slot, so the agent runtime does not need to be rewritten.
 - **Less noise than transcript replay.** The goal is compact, relevant context, not dumping every previous message back into the prompt.
 - **Recall you can inspect.** The dashboard shows what was remembered, what was selected, and how it reaches the model-facing prompt.
 - **Self-hosted by default.** Run the memory service, database, workers, and dashboard in your own environment.
 
-### How Memsense Fits OpenClaw
+### How MemSense Fits OpenClaw
 
 <p align="center">
-  <img alt="Memsense and OpenClaw integration flow" src="docs/assets/openclaw-integration-flow.jpg" width="100%" />
+  <img alt="MemSense and OpenClaw integration flow" src="docs/assets/openclaw-integration-flow.jpg" width="100%" />
 </p>
 
 ---
@@ -63,7 +63,7 @@ What you get:
 | `local` | self-hosted, no external embedding API | Docker recommended; BGE model downloads on first run (~1 GB) |
 | `openai` | fastest startup | `MEMSENSE_OPENAI_API_KEY` in `.env` |
 
-### 2. Start Memsense
+### 2. Start MemSense
 
 ```bash
 cp .env.example .env
@@ -105,21 +105,21 @@ MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 ### 3. Install into OpenClaw
 
 ```bash
-openclaw plugins install -l <path-to-memsense>
-openclaw plugins enable memsense
+openclaw plugins install -l <path-to-MemSense>
+openclaw plugins enable MemSense
 openclaw gateway restart
 ```
 
 > `-l` does a linked install from a local path, useful while iterating on the plugin.
-> If the gateway service is not installed yet, start/configure it first (`openclaw gateway install` or `openclaw gateway --allow-unconfigured` for a local smoke run). If an older `memsense` install already exists, uninstall it or use a clean profile before installing this branch.
+> If the gateway service is not installed yet, start/configure it first (`openclaw gateway install` or `openclaw gateway --allow-unconfigured` for a local smoke run). If an older `MemSense` install already exists, uninstall it or use a clean profile before installing this branch.
 
 ### 4. Bind the memory slot
 
 ```json
 {
   "plugins": {
-    "entries": { "memsense": { "enabled": true } },
-    "slots":   { "memory": "memsense" }
+    "entries": { "MemSense": { "enabled": true } },
+    "slots":   { "memory": "MemSense" }
   }
 }
 ```
@@ -157,17 +157,17 @@ npm run smoke:api
 
 Docker is optional. The Docker quick start is the fastest path because it brings up Postgres, server, workers, and BGE together; the no-Docker path is documented above for local installs.
 
-> **Choosing an embedding mode:** if you have a Qwen / OpenAI-compatible API key handy, `openai` mode skips the BGE download and starts in seconds. If you're running in an air-gapped or compliance-sensitive environment, pick `local`; pre-cache the Docker image and `BAAI/bge-large-zh-v1.5` model first, then Memsense can run without external embedding traffic.
+> **Choosing an embedding mode:** if you have a Qwen / OpenAI-compatible API key handy, `openai` mode skips the BGE download and starts in seconds. If you're running in an air-gapped or compliance-sensitive environment, pick `local`; pre-cache the Docker image and `BAAI/bge-large-zh-v1.5` model first, then MemSense can run without external embedding traffic.
 
 ---
 
 ## Core Concepts
 
-Five ideas that distinguish Memsense from "vector store + RAG" memory plugins. Each one corresponds to a concrete code path you can read, not just a marketing claim.
+Five ideas that distinguish MemSense from "vector store + RAG" memory plugins. Each one corresponds to a concrete code path you can read, not just a marketing claim.
 
 ### 1. Capture by hook, not by API call
 
-Most memory plugins ask the agent to call `memory.save(...)` at the right moment. That's brittle — the agent forgets, mis-attributes, or saves noise. Memsense instead listens to OpenClaw's lifecycle:
+Most memory plugins ask the agent to call `memory.save(...)` at the right moment. That's brittle — the agent forgets, mis-attributes, or saves noise. MemSense instead listens to OpenClaw's lifecycle:
 
 - `llm_input` → normalize the user prompt, run a trigger heuristic, stash it.
 - `llm_output` → take the matching assistant turn, build a canonical QA JSON, POST `/v1/memory/save`.
@@ -178,7 +178,7 @@ Inside a 10-minute window, identical user prompts are deduped at the chunk layer
 
 ### 2. Eight-route retrieval, no LLM in the loop
 
-A single vector route over "the whole turn" is too coarse — it confuses the user's question with the assistant's answer, and misses lexical hits like ticket IDs. Memsense fans out into **8 parallel routes**, then fuses them deterministically:
+A single vector route over "the whole turn" is too coarse — it confuses the user's question with the assistant's answer, and misses lexical hits like ticket IDs. MemSense fans out into **8 parallel routes**, then fuses them deterministically:
 
 | # | Route | What it scores against |
 |---|---|---|
@@ -225,7 +225,7 @@ Both use `FOR UPDATE SKIP LOCKED` claiming, exponential backoff (capped), and a 
 
 ### 5. Verifiably self-hosted
 
-`bash scripts/bootstrap.sh local` brings up Postgres, the server, workers, and the BGE embedding container in one shot. There is no managed control plane and no external embedding API in local mode. The first setup pulls the BGE model from Hugging Face and caches it in a Docker volume (`memsense-hf`); after that, you can run from the cache and verify runtime traffic with `tcpdump`.
+`bash scripts/bootstrap.sh local` brings up Postgres, the server, workers, and the BGE embedding container in one shot. There is no managed control plane and no external embedding API in local mode. The first setup pulls the BGE model from Hugging Face and caches it in a Docker volume (`MemSense-hf`); after that, you can run from the cache and verify runtime traffic with `tcpdump`.
 
 When you'd rather offload embedding, set `MEMSENSE_EMBEDDING_PROVIDER=openai` and point at any OpenAI-compatible endpoint (Qwen / DashScope / OpenAI / etc.). Local and cloud modes are swap-in-place — the rest of the system doesn't change.
 
@@ -272,10 +272,10 @@ A data-ops agent is asked to `parse report_q1.csv` on **day 1**:
 + AGENT   switches to csv-parse library → re-runs → correct result.
 ```
 
-Memsense distils that trajectory into a memory. On **day 12**, a different task arrives — `clean up customers_export.csv` — and the prompt hook injects:
+MemSense distils that trajectory into a memory. On **day 12**, a different task arrives — `clean up customers_export.csv` — and the prompt hook injects:
 
 ```xml
-<relevant_context source="memsense" matched_routes="vec_user,lex,facet_ev">
+<relevant_context source="MemSense" matched_routes="vec_user,lex,facet_ev">
   <memory kind="episodic" score="0.70" rrf="0.31">
     <task_tag>CSV with quoted commas — don't use naive split; use csv-parse</task_tag>
   </memory>
@@ -296,7 +296,7 @@ day 23  human clicks promote         → score adjusted     memory_score 0.65
 ### Visual Dashboard
 
 <p align="center">
-  <img alt="Memsense Dashboard" src="docs/assets/dashboard-screenshot.png" width="100%" />
+  <img alt="MemSense Dashboard" src="docs/assets/dashboard-screenshot.png" width="100%" />
 </p>
 
 - **Prompt Injection Preview** — type a query and inspect the live search response plus the dashboard's prompt-fragment preview. The OpenClaw plugin performs the final production formatting in `index.ts`.
@@ -318,21 +318,21 @@ Tested on [LoCoMo](https://github.com/snap-stanford/locomo) long-range dialogue 
 | OpenClaw + LanceDB (−memory-core) | 44.55% | 51,574,530 | 0.86 |
 | OpenClaw + OpenViking Plugin (−memory-core) | 52.08% |  4,264,396 | 12.21 |
 | OpenClaw + OpenViking Plugin (+memory-core) | 51.23% |  2,099,622 | 24.40 |
-| **OpenClaw + Memsense** | **73.77%** | **3,506,310** | **21.04** |
+| **OpenClaw + MemSense** | **73.77%** | **3,506,310** | **21.04** |
 
 Conclusions:
 
 - Compared to OpenClaw memory-core: **+38.1pp task completion** at **1/7th the input-token cost**.
 - Compared to OpenViking (−memory-core): **+21.7pp task completion** with fewer tokens.
-- Memsense spends ~1.4M more tokens than OpenViking+memory-core for a **+22.5pp gain** — quality-over-efficiency trade-off.
+- MemSense spends ~1.4M more tokens than OpenViking+memory-core for a **+22.5pp gain** — quality-over-efficiency trade-off.
 
 ### Reproduce the numbers
 
 ```bash
-# 1. Ingest LoCoMo conversations into Memsense (writes session + turn chunks)
+# 1. Ingest LoCoMo conversations into MemSense (writes session + turn chunks)
 uv run python evaluation/ingest.py ./evaluation/locomo10.json \
-    --task memsense_eval \
-    --user memsense_eval \
+    --task MemSense_eval \
+    --user MemSense_eval \
     --dashboard-token demo \
     --mode hybrid \
     --generate-tags
@@ -340,14 +340,14 @@ uv run python evaluation/ingest.py ./evaluation/locomo10.json \
 # 2. Run QA through the OpenClaw gateway on the ingested sessions
 uv run python evaluation/qa.py ./evaluation/locomo10.json \
     --base-url http://127.0.0.1:8899 \
-    --task memsense_eval \
-    --user memsense_eval \
+    --task MemSense_eval \
+    --user MemSense_eval \
     --token YOUR_OPENCLAW_GATEWAY_TOKEN \
     --overwrite \
     --parallel 4
 
 # 3. LLM-judge the responses
-uv run python evaluation/judge.py output/qa.memsense_eval.jsonl \
+uv run python evaluation/judge.py output/qa.MemSense_eval.jsonl \
     --base-url https://ark.cn-beijing.volces.com/api/v3 \
     --token YOUR_LLM_TOKEN \
     --model doubao-seed-2-0-mini-260215 \
@@ -355,7 +355,7 @@ uv run python evaluation/judge.py output/qa.memsense_eval.jsonl \
     --output output/grades.json
 ```
 
-Use `--mode hybrid` to enable session-first scoring (recommended). `--mode session` is the full-session baseline; `--mode turn` exists for ablation only. `ingest.py` talks to the Memsense API at `http://127.0.0.1:8787` by default; `qa.py` talks to the OpenClaw Responses-compatible gateway at `http://127.0.0.1:8899` by default. Full reference: [`evaluation/README.md`](evaluation/README.md).
+Use `--mode hybrid` to enable session-first scoring (recommended). `--mode session` is the full-session baseline; `--mode turn` exists for ablation only. `ingest.py` talks to the MemSense API at `http://127.0.0.1:8787` by default; `qa.py` talks to the OpenClaw Responses-compatible gateway at `http://127.0.0.1:8899` by default. Full reference: [`evaluation/README.md`](evaluation/README.md).
 
 ---
 
@@ -371,7 +371,7 @@ All settings live in `.env` (Docker reads it via `docker-compose.yml`; the no-Do
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MEMSENSE_DATABASE_URL` | `postgresql://127.0.0.1:5432/memsense` | Postgres + pgvector connection string |
+| `MEMSENSE_DATABASE_URL` | `postgresql://127.0.0.1:5432/MemSense` | Postgres + pgvector connection string |
 | `MEMSENSE_PORT` | `8787` | HTTP server port (in-container) |
 | `MEMSENSE_HOST_PORT` | `8787` | Docker host-port mapping for the server |
 | `MEMSENSE_POSTGRES_PORT` | `54329` | Docker host-port mapping for Postgres |
@@ -430,7 +430,7 @@ Leave unset to skip tagging; capture and retrieval still work, but `tags` and fa
 
 All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false, "error": "..." }` (HTTP 500) on failure.
 
-**Auth.** Dashboard endpoints require `x-memsense-token: <token>` header *or* `?token=<token>` query string. Token-to-role mapping comes from `MEMSENSE_DASHBOARD_TOKENS_JSON`. Memory endpoints (`/v1/memory/*`) are not gated by token in the current build — gate them at your gateway when exposing beyond localhost.
+**Auth.** Dashboard endpoints require `x-MemSense-token: <token>` header *or* `?token=<token>` query string. Token-to-role mapping comes from `MEMSENSE_DASHBOARD_TOKENS_JSON`. Memory endpoints (`/v1/memory/*`) are not gated by token in the current build — gate them at your gateway when exposing beyond localhost.
 
 📁 Routes defined in [`src/server/app.js`](src/server/app.js).
 
@@ -470,11 +470,11 @@ All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false
 
 ### Plugin manifest
 
-[`openclaw.plugin.json`](openclaw.plugin.json) declares Memsense as a `memory`-kind plugin:
+[`openclaw.plugin.json`](openclaw.plugin.json) declares MemSense as a `memory`-kind plugin:
 
 ```json
 {
-  "id": "memsense",
+  "id": "MemSense",
   "kind": "memory",
   "configSchema": {
     "type": "object",
@@ -513,10 +513,10 @@ All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false
 |---|---|---|
 | Tool | `memory_search` | Top-k memory search; same surface as `/v1/memory/search`, with `embedding` field stripped |
 | Tool | `memory_fetch_recent` | Recent chunks; same surface as `/v1/memory/fetch_recent` |
-| Service | `memsense-server` | Background lifecycle; in Docker mode it connects to the running API, in no-Docker local mode it can start/stop via `scripts/start-bash.sh` / `scripts/stop-bash.sh` |
-| CLI | `memsense:ping` | Sanity check that the plugin is loaded |
+| Service | `MemSense-server` | Background lifecycle; in Docker mode it connects to the running API, in no-Docker local mode it can start/stop via `scripts/start-bash.sh` / `scripts/stop-bash.sh` |
+| CLI | `MemSense:ping` | Sanity check that the plugin is loaded |
 
-The slot binding in [Quick Start step 4](#4-bind-the-memory-slot) tells OpenClaw to route the agent's `memory` slot to `memsense`.
+The slot binding in [Quick Start step 4](#4-bind-the-memory-slot) tells OpenClaw to route the agent's `memory` slot to `MemSense`.
 
 ---
 
@@ -524,7 +524,7 @@ The slot binding in [Quick Start step 4](#4-bind-the-memory-slot) tells OpenClaw
 
 [View diagram](docs/assets/roadmap.png)
 
-Memsense captures every trajectory with structured metadata (kind, tags, facets, outcome score, events) — the foundation for the next step: **refined trajectories flowing back into model training** (Capture → Refine Signal → Learn Model).
+MemSense captures every trajectory with structured metadata (kind, tags, facets, outcome score, events) — the foundation for the next step: **refined trajectories flowing back into model training** (Capture → Refine Signal → Learn Model).
 
 Everything *above* this section runs today; this section is the north star.
 
@@ -546,7 +546,7 @@ Everything *above* this section runs today; this section is the north star.
 
 ## Community & Contributing
 
-Memsense is early. The fastest ways to help:
+MemSense is early. The fastest ways to help:
 
 - ⭐ **Star and watch the repo** — visibility helps us prioritize.
 - 🐛 **Open an issue** with reproducer steps. Concrete bug reports beat feature wishlists.
