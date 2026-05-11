@@ -1,5 +1,6 @@
-<div align="center">
 
+<div align="center">
+# SenseNova 6.7 Flash-Lite
 <h1 style="font-size: 16rem;">MemSense</h1>
 
 <p>
