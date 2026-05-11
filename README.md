@@ -522,7 +522,9 @@ The slot binding in [Quick Start step 4](#4-bind-the-memory-slot) tells OpenClaw
 
 ## Roadmap — from memory to continual learning
 
-[View diagram](docs/assets/roadmap.png)
+<p align="center">
+  <img alt="Memsense roadmap — from memory to continual learning" src="docs/assets/roadmap.png" width="100%" />
+</p>
 
 MemSense captures every trajectory with structured metadata (kind, tags, facets, outcome score, events) — the foundation for the next step: **refined trajectories flowing back into model training** (Capture → Refine Signal → Learn Model).
 

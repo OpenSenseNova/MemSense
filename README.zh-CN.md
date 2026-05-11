@@ -533,7 +533,9 @@ uv run python evaluation/judge.py output/qa.MemSense_eval.jsonl \
 
 ## Roadmap：从记忆到持续学习
 
-[查看路线图](docs/assets/roadmap.png)
+<p align="center">
+  <img alt="Memsense roadmap：从记忆到持续学习" src="docs/assets/roadmap.png" width="100%" />
+</p>
 
 MemSense 会用结构化 metadata 捕获每条 trajectory，包括 kind、tags、facets、outcome score、events。这为下一步打基础：**把整理后的 trajectory 作为信号，回流到模型训练中**，也就是 Capture → Refine Signal → Learn Model。
 
