@@ -1,24 +1,26 @@
 <div align="center">
 
-# MemSense
-
-**A truly usable long-term memory for OpenClaw.**
+<h1 style="font-size: 4rem;">MemSense</h1>
 
 <p>
   <a href="README.md"><strong>English</strong></a> ·
   <a href="README.zh-CN.md">中文</a>
 </p>
 
-<h2><a href="#quick-start">Quick Start</a></h2>
-<p><strong>Start with Docker or no-Docker mode in a few commands.</strong></p>
+</div>
 
-<p>
+<p align="center">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-22c55e" />
   <img alt="self-hosted" src="https://img.shields.io/badge/self--hosted-f59e0b" />
   <img alt="no external API" src="https://img.shields.io/badge/external%20API-not%20required-111827" />
+  <img alt="paper" src="https://img.shields.io/badge/paper-coming%20soon-8b5cf6" />
 </p>
 
-</div>
+> A truly usable long-term memory for OpenClaw.
+
+MemSense is an open-source memory plugin built for OpenClaw, turning long-term memory from something unstable and hard to inspect into a reliable, manageable foundation.
+It preserves QA turns and manages memory with clear rules, reducing information loss, conflicts, and memory that gets messier over time.
+Ready to run with Docker or no-Docker mode in a few commands. [**Quick Start**](#quick-start)
 
 <p align="center">
   <img alt="MemSense demo showing OpenClaw remembering a user's favorite pixel art game" src="docs/assets/Image_en.png" width="100%" />
@@ -39,17 +41,17 @@ MemSense has a simple goal: make OpenClaw memory **reliable, controllable, and u
 
 ### ✨ Why MemSense
 
-- **Plug in with almost no integration cost.** Local mode runs self-hosted and does not require an external API.
-- **Open source and transparent.** The memory pipeline is visible, controllable, and debuggable.
-- **Stable capture.** Useful QA turns are written through OpenClaw lifecycle hooks, instead of relying on the model to remember when to save.
-- **Model-free memory behavior.** Memory is not tied to a model's built-in memory strategy, so switching models does not require redesigning the memory layer.
+- **Plug-and-play, low integration cost.** No API key or external service is required in local mode. Connect it to OpenClaw, run it locally, and get started in minutes.
+- **Fully open source and transparent.** Memory generation, storage, retrieval, and management logic are all visible, with no hidden strategy, making debugging, customization, and extension straightforward.
+- **Stable and reliable.** User QA turns are recorded through the memory pipeline, reducing the uncertainty of memory that only sometimes gets saved.
+- **Model-free.** MemSense does not depend on a model's built-in memory ability or prompt strategy, so switching models, tokenizers, or inference setups does not require memory-layer adaptation.
 
 ### Core Capabilities
 
-- **QA-level memory without summary compression.** MemSense stores canonical user/assistant turns so the original QA meaning is preserved.
-- **Memory Dashboard.** View, search, inspect, archive, restore, or delete memory from a visual dashboard.
-- **Long-term memory controls.** Deduplication, scoring, promote/demote, archive, and soft-delete make memory easier to manage over time.
-- **Consistent storage.** Memory is persisted as structured data, not left as a probabilistic side effect of model behavior.
+- **Memory without summary compression.** MemSense does not replace QA with summaries; it preserves the original user/assistant meaning for later retrieval.
+- **Memory Dashboard.** View, manage, and debug memory visually. You can see what was stored and why it was recalled.
+- **Automated long-term memory management.** Rule-based organization, deduplication, scoring, archive, and soft-delete help keep memory structured over long-running use.
+- **Consistent storage guarantees.** Memory is written as controlled, structured data, not left as a probabilistic side effect of model output or intermediate state.
 
 ### How MemSense Fits OpenClaw
 
