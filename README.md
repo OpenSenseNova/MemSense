@@ -21,13 +21,7 @@
 </div>
 
 <p align="center">
-  <img alt="MemSense theme banner" src="docs/assets/theme-banner.svg" width="88%" />
-</p>
-
-<p align="center">
-  <img alt="Trajectory" src="docs/assets/card-trajectory.svg" width="31%" />
-  <img alt="Recall" src="docs/assets/card-recall.svg" width="31%" />
-  <img alt="Learning" src="docs/assets/card-learning.svg" width="31%" />
+  <img alt="MemSense demo showing OpenClaw remembering a user's favorite pixel art game" src="docs/assets/Image_en.png" width="100%" />
 </p>
 
 ---
