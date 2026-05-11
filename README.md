@@ -19,7 +19,7 @@
 
 > A truly usable long-term memory for OpenClaw.
 
-MemSense is an open-source memory plugin built for OpenClaw, turning long-term memory from something unstable and hard to inspect into a reliable, manageable foundation.
+MemSense is an open-source memory plugin built for OpenClaw, turning long-term memory from unstable and hard to inspect into a reliable, manageable foundation.
 It preserves QA turns and manages memory with clear rules, reducing information loss, conflicts, and memory that gets messier over time.
 Ready to run with Docker or no-Docker mode in a few commands. [**Quick Start**](#quick-start)
 
@@ -587,3 +587,36 @@ PRs welcome. Please add a test under `test/*.test.mjs` for any behavior change, 
 ## License
 
 [MIT](LICENSE).
+
+---
+
+## Contributors
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/moolean">
+        <img src="https://github.com/moolean.png" width="80" height="80" alt="moolean" /><br />
+        <sub><strong>moolean Tiankuo Yao</strong></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/botwu">
+        <img src="https://github.com/botwu.png" width="80" height="80" alt="botwu" /><br />
+        <sub><strong>botwu Jay</strong></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/adazhng">
+        <img src="https://github.com/adazhng.png" width="80" height="80" alt="adazhng" /><br />
+        <sub><strong>adazhng Adazhng</strong></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/lyclyc52">
+        <img src="https://github.com/lyclyc52.png" width="80" height="80" alt="lyclyc52" /><br />
+        <sub><strong>lyclyc52 Liu Yichen</strong></sub>
+      </a>
+    </td>
+  </tr>
+</table>
