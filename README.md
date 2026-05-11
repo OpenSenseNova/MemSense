@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1 style="font-size: 4rem;">MemSense</h1>
+<h1 style="font-size: 6rem;">MemSense</h1>
 
 <p>
   <a href="README.md"><strong>English</strong></a> ·
