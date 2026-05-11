@@ -24,12 +24,12 @@
       margin: 0;
       background: linear-gradient(180deg, #0b1020 0%, #0f1530 100%);
       color: var(--text);
-      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      padding: 24px;
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 18px;
     }
-    .shell { max-width: 1280px; margin: 0 auto; }
+    .shell { width: 100%; max-width: none; margin: 0; }
     .hero { display:flex; justify-content:space-between; gap:16px; align-items:flex-end; margin-bottom:18px; }
-    .title { font-size: 28px; font-weight: 700; margin:0; }
+    .title { font-size: 32px; font-weight: 700; margin:0; }
     .subtitle { color: var(--muted); margin-top: 6px; }
     .hint { color: var(--muted); }
     .card {
@@ -48,8 +48,9 @@
       border: 1px solid var(--line);
       color: var(--text);
       border-radius: 8px;
-      padding: 8px 10px;
-      min-height: 34px;
+      padding: 10px 12px;
+      min-height: 42px;
+      font-size: 14px;
     }
     .search-input { flex: 1 1 280px; }
     select { min-width: 120px; }
@@ -61,9 +62,10 @@
       color: white;
       border-radius: 8px;
       cursor: pointer;
-      padding: 8px 12px;
+      padding: 10px 14px;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 13px;
+      min-height: 40px;
     }
     .btn.secondary, .mini-btn.secondary { background: #24335f; }
     .mini-btn.danger { background: #5a2438; }
@@ -84,8 +86,8 @@
       gap: 10px;
       margin-bottom: 12px;
     }
-    .kpi-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
-    .kpi-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .kpi-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .kpi-value { font-size: 26px; font-weight: 700; margin-top: 4px; }
     .pipeline-grid {
       display:grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -96,22 +98,23 @@
     .pipeline-title { font-weight: 700; margin-bottom: 8px; }
     .pipeline-metric { display:flex; justify-content:space-between; gap:10px; color: var(--muted); padding: 3px 0; }
     .list { display:grid; gap: 8px; margin-top: 10px; }
-    .memory-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .memory-table th, .memory-table td { border-bottom: 1px solid rgba(42,54,104,.6); padding: 8px 10px; vertical-align: top; text-align: left; }
-    .memory-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; position: sticky; top: 0; background: rgba(18,25,51,.98); }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    .memory-table { width: 100%; min-width: 1180px; border-collapse: collapse; font-size: 13px; }
+    .memory-table th, .memory-table td { border-bottom: 1px solid rgba(42,54,104,.6); padding: 10px 12px; vertical-align: top; text-align: left; }
+    .memory-table th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; position: sticky; top: 0; background: rgba(18,25,51,.98); }
     .memory-row:hover td { background: rgba(24,34,70,.25); }
-    .memory-id { font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; font-size: 11px; }
-    .summary-cell { min-width: 180px; max-width: 320px; }
-    .summary-title { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 3px; }
+    .memory-id { font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; font-size: 12px; }
+    .summary-cell { min-width: 220px; max-width: 420px; }
+    .summary-title { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 3px; }
     .summary-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     .row-main { cursor: pointer; }
     .row-main td { transition: background-color .12s ease; }
     .row-main.active td { background: rgba(24,34,70,.32); }
     .action-stack { display:flex; flex-direction:column; gap:5px; align-items:flex-start; min-width: 132px; }
     .action-hint { color: rgba(159,176,217,.72); font-size: 10px; line-height: 1; }
     .action-line { display:flex; gap:6px; flex-wrap:nowrap; align-items:center; }
-    .action-line .mini-btn { min-width: 38px; padding: 6px 8px; font-size: 11px; line-height: 1; }
+    .action-line .mini-btn { min-width: 42px; padding: 7px 9px; font-size: 12px; line-height: 1; }
     .status {
       padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase;
       border: 1px solid transparent;
@@ -135,7 +138,7 @@
     .detail-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .playground-grid { display:grid; gap:10px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 10px; }
     .play-card { min-width: 0; }
-    .result-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; max-height: 460px; overflow: auto; font-size: 12px; }
+    .result-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; max-height: 460px; overflow: auto; font-size: 13px; }
     .tool-json { display:grid; gap:10px; }
     .tool-node { border: 1px solid var(--line); border-radius: 10px; background: rgba(24,34,70,.55); overflow: hidden; }
     .tool-node-head { display:flex; justify-content:space-between; gap:12px; padding:8px 10px; color: var(--muted); border-bottom: 1px solid rgba(42,54,104,.6); }
@@ -504,7 +507,7 @@
           </tr>`;
       }).join('');
 
-      root.innerHTML = `<div class="card"><table class="memory-table"><thead><tr><th>Time</th><th>Status</th><th>Kind</th><th>Memory ID</th><th>User</th><th>Assistant</th><th>Session / Agent</th><th>Tags</th><th>Actions</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+      root.innerHTML = `<div class="card"><div class="table-wrap"><table class="memory-table"><thead><tr><th>Time</th><th>Status</th><th>Kind</th><th>Memory ID</th><th>User</th><th>Assistant</th><th>Session / Agent</th><th>Tags</th><th>Actions</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div>`;
       root.querySelectorAll('button[data-id]').forEach((btn) => btn.addEventListener('click', (e) => {
         e.stopPropagation();
         setStatus(btn.dataset.id, btn.dataset.s);

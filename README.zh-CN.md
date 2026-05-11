@@ -1,50 +1,58 @@
 <div align="center">
 
-# MemSense
-
-**给 OpenClaw agent 用的记忆插件，让每次会话不用从零开始。**
+<h1 style="font-size: 4rem;">MemSense</h1>
 
 <p>
   <a href="README.md">English</a> ·
   <a href="README.zh-CN.md"><strong>中文</strong></a>
 </p>
 
-<h2><a href="#快速开始">快速开始</a></h2>
-<p><strong>Docker 或无 Docker 模式，几条命令就能跑起来。</strong></p>
-
-<p>
-  <img alt="license" src="https://img.shields.io/badge/license-MIT-22c55e" />
-  <img alt="self-hosted" src="https://img.shields.io/badge/self--hosted-f59e0b" />
-  <img alt="no external API" src="https://img.shields.io/badge/external%20API-not%20required-111827" />
-</p>
-
 </div>
 
 <p align="center">
-  <img alt="MemSense theme banner" src="docs/assets/theme-banner.svg" width="88%" />
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-22c55e" />
+  <img alt="self-hosted" src="https://img.shields.io/badge/self--hosted-f59e0b" />
+  <img alt="no external API" src="https://img.shields.io/badge/external%20API-not%20required-111827" />
+  <img alt="paper" src="https://img.shields.io/badge/paper-coming%20soon-8b5cf6" />
 </p>
 
+> 给 OpenClaw 一个真正可用的长期记忆。
+
+MemSense 是一个为 OpenClaw 打造的开源记忆插件，让长期 memory 从不稳定、不可控，变成可靠且可管理的基础能力。
+它完整保留 QA，并用清晰规则管理 memory，减少信息丢失、冲突和越用越乱的问题。
+Docker 或无 Docker 模式，几条命令就能跑起来。[**快速开始**](#快速开始)
+
 <p align="center">
-  <img alt="Trajectory" src="docs/assets/card-trajectory.svg" width="31%" />
-  <img alt="Recall" src="docs/assets/card-recall.svg" width="31%" />
-  <img alt="Learning" src="docs/assets/card-learning.svg" width="31%" />
+  <img alt="MemSense demo：OpenClaw 记住用户喜欢的像素游戏" src="docs/assets/Image_zh.png" width="100%" />
 </p>
 
 ---
 
 ## 概览
 
-Agent 在工作时会积累很多有用的信息：用户偏好、项目背景、已经试错过的方法、某次问题最后是怎么解决的。没有记忆，这些经验会随着会话结束一起消失，下一次又要重新解释、重新踩坑。
+如果你用过 OpenClaw 的 memory，大概率遇到过这些情况：
 
-MemSense 是一个 OpenClaw 记忆插件。它不会简单地把聊天记录全塞回上下文，而是把 agent 的工作过程整理成可复用的经验，在下一次需要时提前放进模型调用前的上下文里。你也可以在 dashboard 里看到它记住了什么、选中了什么、为什么会被带到这次请求里。
+- ❌ 记忆越用越多，但越来越混乱。
+- ❌ 模型一换，memory 的表现就变得不稳定。
+- ❌ 有些关键对话没有被存进去，后面也就想不起来。
+- ❌ 想看 memory 为什么被用到，很难查清楚。
 
-你会得到：
+MemSense 的目标很简单：让 OpenClaw 的记忆真正**可靠、可控、可长期使用**。
 
-- **能记住有用经验的 agent。** 项目信息、用户偏好、踩过的坑、成功的处理方式，都可以被带到后续会话。
-- **适配 OpenClaw 的记忆插件。** MemSense 通过 OpenClaw 的 memory slot 接入，不需要重写 agent runtime。
-- **比回放聊天记录更少噪声。** 目标是给模型一小段真正相关的背景，而不是把历史消息整段堆进去。
-- **可检查的记忆召回。** dashboard 可以看到近期记忆、搜索结果、选中的上下文，以及最终进入 prompt 的内容。
-- **默认自托管。** 服务、数据库、worker、dashboard 都可以跑在你自己的环境里。
+### ✨ Why MemSense
+
+- **即插即用，接入成本低** 无需 API Key，不依赖任何外部服务，直接接入 OpenClaw 即可运行，完全本地、免费使用，几分钟内完成部署。
+- **全开源，全透明。** 所有 memory 的生成、存储与管理逻辑完全公开，没有隐藏策略，方便调试、二次开发和深度定制。
+- **稳定可靠。** 每一条用户 QA 都会被记录，避免原生系统中“偶尔存不进去”的不确定性，让记忆真正可依赖。
+- **Model-free。** 不依赖模型的 memory 能力或 prompt 策略，切换模型（甚至不同 tokenizer / 推理方式）也无需做任何适配。
+
+
+### Core Capabilities
+
+- **无信息损失的记忆机制** 不做语义压缩或摘要，完整保留原始 QA，上下文信息不会被削弱或丢失，保证后续检索的准确性。
+- **Memory Dashboard。** 所有 memory 可查看、可管理、可调试，不再是黑盒；可以清晰知道“存了什么、为什么被召回”。
+- **自动化长期记忆管理。** 基于规则对 memory 进行整理与约束，避免信息冲突、冗余堆积和时效性失效，长期运行依然保持清晰结构。
+- **强一致存储保障。** memory 写入过程稳定可控，不依赖模型输出或中间状态，确保数据不会丢失或遗漏。
 
 ### MemSense 如何接入 OpenClaw
 
@@ -533,7 +541,9 @@ uv run python evaluation/judge.py output/qa.MemSense_eval.jsonl \
 
 ## Roadmap：从记忆到持续学习
 
-[查看路线图](docs/assets/roadmap.png)
+<p align="center">
+  <img alt="Memsense roadmap：从记忆到持续学习" src="docs/assets/roadmap.png" width="100%" />
+</p>
 
 MemSense 会用结构化 metadata 捕获每条 trajectory，包括 kind、tags、facets、outcome score、events。这为下一步打基础：**把整理后的 trajectory 作为信号，回流到模型训练中**，也就是 Capture → Refine Signal → Learn Model。
 

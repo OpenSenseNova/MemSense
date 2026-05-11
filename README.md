@@ -1,50 +1,58 @@
+
 <div align="center">
 
-# MemSense
-
-**Memory for OpenClaw agents that should not start from zero every time.**
+<h1 style="font-size: 6rem;">MemSense</h1>
 
 <p>
   <a href="README.md"><strong>English</strong></a> ·
   <a href="README.zh-CN.md">中文</a>
 </p>
 
-<h2><a href="#quick-start">Quick Start</a></h2>
-<p><strong>Start with Docker or no-Docker mode in a few commands.</strong></p>
-
-<p>
-  <img alt="license" src="https://img.shields.io/badge/license-MIT-22c55e" />
-  <img alt="self-hosted" src="https://img.shields.io/badge/self--hosted-f59e0b" />
-  <img alt="no external API" src="https://img.shields.io/badge/external%20API-not%20required-111827" />
-</p>
-
 </div>
 
 <p align="center">
-  <img alt="MemSense theme banner" src="docs/assets/theme-banner.svg" width="88%" />
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-22c55e" />
+  <img alt="self-hosted" src="https://img.shields.io/badge/self--hosted-f59e0b" />
+  <img alt="no external API" src="https://img.shields.io/badge/external%20API-not%20required-111827" />
+  <img alt="paper" src="https://img.shields.io/badge/paper-coming%20soon-8b5cf6" />
 </p>
 
+> A truly usable long-term memory for OpenClaw.
+
+MemSense is an open-source memory plugin built for OpenClaw, turning long-term memory from unstable and hard to inspect into a reliable, manageable foundation.
+It preserves QA turns and manages memory with clear rules, reducing information loss, conflicts, and memory that gets messier over time.
+Ready to run with Docker or no-Docker mode in a few commands. [**Quick Start**](#quick-start)
+
 <p align="center">
-  <img alt="Trajectory" src="docs/assets/card-trajectory.svg" width="31%" />
-  <img alt="Recall" src="docs/assets/card-recall.svg" width="31%" />
-  <img alt="Learning" src="docs/assets/card-learning.svg" width="31%" />
+  <img alt="MemSense demo showing OpenClaw remembering a user's favorite pixel art game" src="docs/assets/Image_en.png" width="100%" />
 </p>
 
 ---
 
 ## Overview
 
-Agents pick up useful context while they work: what the user cares about, which approaches already failed, what decisions were made, and what worked last time. Without memory, that experience disappears when the session ends.
+If you have used OpenClaw memory, you have probably run into problems like these:
 
-MemSense is an OpenClaw memory plugin that turns what happened during a run into reusable experience. It is not a raw chat-log bucket. It keeps the parts that can help a future run, brings back a small amount of relevant context before the model call, and lets you inspect why that context was selected.
+- ❌ Memory keeps growing, but becomes harder to trust.
+- ❌ Switching models can make memory behavior unstable.
+- ❌ Important conversations may never get stored.
+- ❌ When a memory is used, it is hard to inspect why.
 
-What you get:
+MemSense has a simple goal: make OpenClaw memory **reliable, controllable, and usable over the long term**.
 
-- **An agent that remembers useful work.** Project facts, user preferences, past mistakes, and successful fixes can carry into the next session.
-- **Memory that fits OpenClaw.** MemSense plugs into the OpenClaw memory slot, so the agent runtime does not need to be rewritten.
-- **Less noise than transcript replay.** The goal is compact, relevant context, not dumping every previous message back into the prompt.
-- **Recall you can inspect.** The dashboard shows what was remembered, what was selected, and how it reaches the model-facing prompt.
-- **Self-hosted by default.** Run the memory service, database, workers, and dashboard in your own environment.
+### ✨ Why MemSense
+
+- **Plug-and-play, low integration cost.** No API key or external service is required in local mode. Connect it to OpenClaw, run it locally, and get started in minutes.
+- **Fully open source and transparent.** Memory generation, storage, retrieval, and management logic are all visible, with no hidden strategy, making debugging, customization, and extension straightforward.
+- **Stable and reliable.** User QA turns are recorded through the memory pipeline, reducing the uncertainty of memory that only sometimes gets saved.
+- **Model-free.** MemSense does not depend on a model's built-in memory ability or prompt strategy, so switching models, tokenizers, or inference setups does not require memory-layer adaptation.
+
+### Core Capabilities
+
+- **Memory without summary compression.** MemSense does not replace QA with summaries; it preserves the original user/assistant meaning for later retrieval.
+- **Memory Dashboard.** View, manage, and debug memory visually. You can see what was stored and why it was recalled.
+- **Automated long-term memory management.** Rule-based organization, deduplication, scoring, archive, and soft-delete help keep memory structured over long-running use.
+- **Consistent storage guarantees.** Memory is written as controlled, structured data, not left as a probabilistic side effect of model output or intermediate state.
 
 ### How MemSense Fits OpenClaw
 
@@ -522,7 +530,9 @@ The slot binding in [Quick Start step 4](#4-bind-the-memory-slot) tells OpenClaw
 
 ## Roadmap — from memory to continual learning
 
-[View diagram](docs/assets/roadmap.png)
+<p align="center">
+  <img alt="Memsense roadmap — from memory to continual learning" src="docs/assets/roadmap.png" width="100%" />
+</p>
 
 MemSense captures every trajectory with structured metadata (kind, tags, facets, outcome score, events) — the foundation for the next step: **refined trajectories flowing back into model training** (Capture → Refine Signal → Learn Model).
 
@@ -577,3 +587,36 @@ PRs welcome. Please add a test under `test/*.test.mjs` for any behavior change, 
 ## License
 
 [MIT](LICENSE).
+
+---
+
+## Contributors
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/moolean">
+        <img src="https://github.com/moolean.png" width="80" height="80" alt="moolean" /><br />
+        <sub><strong>moolean Tiankuo Yao</strong></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/botwu">
+        <img src="https://github.com/botwu.png" width="80" height="80" alt="botwu" /><br />
+        <sub><strong>botwu Jay</strong></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/adazhng">
+        <img src="https://github.com/adazhng.png" width="80" height="80" alt="adazhng" /><br />
+        <sub><strong>adazhng Adazhng</strong></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/lyclyc52">
+        <img src="https://github.com/lyclyc52.png" width="80" height="80" alt="lyclyc52" /><br />
+        <sub><strong>lyclyc52 Liu Yichen</strong></sub>
+      </a>
+    </td>
+  </tr>
+</table>
