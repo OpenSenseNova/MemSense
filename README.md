@@ -1,7 +1,7 @@
 
 <div align="center">
-# SenseNova 6.7 Flash-Lite
-<h1 style="font-size: 16rem;">MemSense</h1>
+
+<h1 style="font-size: 6rem;">MemSense</h1>
 
 <p>
   <a href="README.md"><strong>English</strong></a> ·
