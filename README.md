@@ -2,7 +2,7 @@
 
 # MemSense
 
-**Memory for OpenClaw agents that should not start from zero every time.**
+**A truly usable long-term memory for OpenClaw.**
 
 <p>
   <a href="README.md"><strong>English</strong></a> ·
@@ -28,17 +28,28 @@
 
 ## Overview
 
-Agents pick up useful context while they work: what the user cares about, which approaches already failed, what decisions were made, and what worked last time. Without memory, that experience disappears when the session ends.
+If you have used OpenClaw memory, you have probably run into problems like these:
 
-MemSense is an OpenClaw memory plugin that turns what happened during a run into reusable experience. It is not a raw chat-log bucket. It keeps the parts that can help a future run, brings back a small amount of relevant context before the model call, and lets you inspect why that context was selected.
+- ❌ Memory keeps growing, but becomes harder to trust.
+- ❌ Switching models can make memory behavior unstable.
+- ❌ Important conversations may never get stored.
+- ❌ When a memory is used, it is hard to inspect why.
 
-What you get:
+MemSense has a simple goal: make OpenClaw memory **reliable, controllable, and usable over the long term**.
 
-- **An agent that remembers useful work.** Project facts, user preferences, past mistakes, and successful fixes can carry into the next session.
-- **Memory that fits OpenClaw.** MemSense plugs into the OpenClaw memory slot, so the agent runtime does not need to be rewritten.
-- **Less noise than transcript replay.** The goal is compact, relevant context, not dumping every previous message back into the prompt.
-- **Recall you can inspect.** The dashboard shows what was remembered, what was selected, and how it reaches the model-facing prompt.
-- **Self-hosted by default.** Run the memory service, database, workers, and dashboard in your own environment.
+### ✨ Why MemSense
+
+- **Plug in with almost no integration cost.** Local mode runs self-hosted and does not require an external API.
+- **Open source and transparent.** The memory pipeline is visible, controllable, and debuggable.
+- **Stable capture.** Useful QA turns are written through OpenClaw lifecycle hooks, instead of relying on the model to remember when to save.
+- **Model-free memory behavior.** Memory is not tied to a model's built-in memory strategy, so switching models does not require redesigning the memory layer.
+
+### Core Capabilities
+
+- **QA-level memory without summary compression.** MemSense stores canonical user/assistant turns so the original QA meaning is preserved.
+- **Memory Dashboard.** View, search, inspect, archive, restore, or delete memory from a visual dashboard.
+- **Long-term memory controls.** Deduplication, scoring, promote/demote, archive, and soft-delete make memory easier to manage over time.
+- **Consistent storage.** Memory is persisted as structured data, not left as a probabilistic side effect of model behavior.
 
 ### How MemSense Fits OpenClaw
 

@@ -2,7 +2,7 @@
 
 # MemSense
 
-**给 OpenClaw agent 用的记忆插件，让每次会话不用从零开始。**
+**给 OpenClaw 一个真正可用的长期记忆。**
 
 <p>
   <a href="README.md">English</a> ·
@@ -28,17 +28,28 @@
 
 ## 概览
 
-Agent 在工作时会积累很多有用的信息：用户偏好、项目背景、已经试错过的方法、某次问题最后是怎么解决的。没有记忆，这些经验会随着会话结束一起消失，下一次又要重新解释、重新踩坑。
+如果你用过 OpenClaw 的 memory，大概率遇到过这些情况：
 
-MemSense 是一个 OpenClaw 记忆插件。它不会简单地把聊天记录全塞回上下文，而是把 agent 的工作过程整理成可复用的经验，在下一次需要时提前放进模型调用前的上下文里。你也可以在 dashboard 里看到它记住了什么、选中了什么、为什么会被带到这次请求里。
+- ❌ 记忆越用越多，但越来越混乱。
+- ❌ 模型一换，memory 的表现就变得不稳定。
+- ❌ 有些关键对话没有被存进去，后面也就想不起来。
+- ❌ 想看 memory 为什么被用到，很难查清楚。
 
-你会得到：
+MemSense 的目标很简单：让 OpenClaw 的记忆真正**可靠、可控、可长期使用**。
 
-- **能记住有用经验的 agent。** 项目信息、用户偏好、踩过的坑、成功的处理方式，都可以被带到后续会话。
-- **适配 OpenClaw 的记忆插件。** MemSense 通过 OpenClaw 的 memory slot 接入，不需要重写 agent runtime。
-- **比回放聊天记录更少噪声。** 目标是给模型一小段真正相关的背景，而不是把历史消息整段堆进去。
-- **可检查的记忆召回。** dashboard 可以看到近期记忆、搜索结果、选中的上下文，以及最终进入 prompt 的内容。
-- **默认自托管。** 服务、数据库、worker、dashboard 都可以跑在你自己的环境里。
+### ✨ Why MemSense
+
+- **即插即用，接入成本低。** 本地模式无需外部 API，服务、数据库、worker 和 dashboard 都可以自托管。
+- **全开源透明。** memory 的保存、检索、注入和管理逻辑都可见、可控、可调试。
+- **稳定可靠。** 有价值的 QA 通过 OpenClaw lifecycle hooks 写入，不再依赖模型“记得自己保存”。
+- **Model-free。** 不依赖模型自己的 memory 策略，切换模型时不需要重做记忆层。
+
+### Core Capabilities
+
+- **QA 级别无摘要压缩。** MemSense 保存标准化后的 user/assistant 轮次，不靠摘要压缩来替代原始 QA 语义。
+- **Memory Dashboard。** 可视化查看、搜索、检查、归档、恢复或删除 memory，不再是黑盒。
+- **长期记忆管理。** 去重、评分、promote/demote、归档和 soft-delete，让 memory 越用越可管理。
+- **强一致存储。** memory 作为结构化数据持久化下来，而不是模型行为里的概率事件。
 
 ### MemSense 如何接入 OpenClaw
 
