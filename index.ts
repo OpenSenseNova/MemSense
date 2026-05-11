@@ -1,18 +1,125 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 
 import { TriggerPipeline } from "./src/trigger/trigger-pipeline.js";
 import { normalizeNaturalText, buildQaFromHistory, contentToText } from "./src/capture/message-normalize.js";
 import { buildCanonicalQaJson, canonicalizeUserText, selectFinalAssistantText } from "./src/capture/canonical-qa.js";
-const MEMSENSE_API_URL = process.env.MEMSENSE_API_URL || "http://127.0.0.1:8787";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+function stripEnvQuotes(value: string): string {
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    return value.slice(1, -1);
+  }
+  return value;
+}
+
+function loadDotEnvSync() {
+  const envPath = join(__dirname, ".env");
+  if (!existsSync(envPath)) return;
+  const text = readFileSync(envPath, "utf8");
+  for (const rawLine of text.split(/\r?\n/)) {
+    if (!rawLine.trim() || rawLine.trim().startsWith("#")) continue;
+    const match = rawLine.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (!match) continue;
+    const [, key, rawValue] = match;
+    if (process.env[key] != null) continue;
+    process.env[key] = stripEnvQuotes(rawValue.trim());
+  }
+}
+
+loadDotEnvSync();
+
+function normalizeBaseUrl(url: string): string {
+  return String(url || "").replace(/\/+$/, "");
+}
+
+function resolveMemsenseApiUrl(): string {
+  if (process.env.MEMSENSE_API_URL) return normalizeBaseUrl(process.env.MEMSENSE_API_URL);
+  const hostPort = process.env.MEMSENSE_HOST_PORT || process.env.MEMSENSE_PORT || "8787";
+  return `http://127.0.0.1:${hostPort}`;
+}
+
+let MEMSENSE_API_URL = resolveMemsenseApiUrl();
+
+function directFetch(url: string, options: { method?: string; body?: string } = {}): Promise<{ ok: boolean; status: number; json: () => Promise<any> }> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const isHttps = parsed.protocol === "https:";
+    const req = (isHttps ? httpsRequest : httpRequest)(
+      {
+        hostname: parsed.hostname,
+        port: parsed.port || (isHttps ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        method: options.method || "GET",
+        headers: options.body
+          ? { "content-type": "application/json", "content-length": Buffer.byteLength(options.body) }
+          : {},
+      },
+      (res) => {
+        let raw = "";
+        res.on("data", (chunk: Buffer) => { raw += chunk; });
+        res.on("end", () => {
+          const status = res.statusCode ?? 0;
+          resolve({
+            ok: status >= 200 && status < 300,
+            status,
+            json: () => {
+              try { return Promise.resolve(JSON.parse(raw)); }
+              catch (e) { return Promise.reject(e); }
+            },
+          });
+        });
+      }
+    );
+    req.on("error", reject);
+    if (options.body) req.write(options.body);
+    req.end();
+  });
+}
+
+async function isMemsenseApiHealthy() {
+  try {
+    const res = await directFetch(`${MEMSENSE_API_URL}/healthz`);
+    if (!res.ok) return false;
+    const json = await res.json();
+    return json?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+function isDockerBootstrapEnv() {
+  const bgeEndpoint = String(process.env.MEMSENSE_BGE_ENDPOINT || "");
+  return Boolean(process.env.MEMSENSE_HOST_PORT) || /^https?:\/\/bge(?::|\/)/.test(bgeEndpoint);
+}
+
+async function shouldStartLocalService(ctx: any, pluginServiceMode?: string) {
+  const mode = String(process.env.MEMSENSE_SERVICE_MODE || pluginServiceMode || "auto").toLowerCase();
+  if (["external", "none", "off", "false", "0"].includes(mode)) {
+    ctx.logger.info(`memsense service autostart disabled; using ${MEMSENSE_API_URL}`);
+    return false;
+  }
+  if (await isMemsenseApiHealthy()) {
+    ctx.logger.info(`memsense API already healthy at ${MEMSENSE_API_URL}; local service start skipped`);
+    return false;
+  }
+  if (mode === "local" || mode === "managed") return true;
+  if (isDockerBootstrapEnv()) {
+    ctx.logger.warn(`memsense Docker-mode env detected but ${MEMSENSE_API_URL}/healthz is not healthy; run scripts/bootstrap.sh instead of starting local processes`);
+    return false;
+  }
+  return true;
+}
+
 async function getSetupStatusHint() {
   try {
-    const res = await fetch(`${MEMSENSE_API_URL}/v1/system/setup-status`);
+    const res = await directFetch(`${MEMSENSE_API_URL}/v1/system/setup-status`);
     const json = await res.json();
     if (!res.ok || !json?.ok) return "";
     const d = json.data || {};
@@ -26,11 +133,8 @@ async function getSetupStatusHint() {
 }
 
 async function callApi(path: string, body: unknown) {
-  const res = await fetch(`${MEMSENSE_API_URL}${path}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body || {}),
-  });
+  const bodyStr = JSON.stringify(body || {});
+  const res = await directFetch(`${MEMSENSE_API_URL}${path}`, { method: "POST", body: bodyStr });
   const json = await res.json();
   if (!res.ok || !json?.ok) {
     const hint = await getSetupStatusHint();
@@ -93,11 +197,74 @@ function isMeaningfulQuery(text: string): boolean {
   return true;
 }
 
+function renderMemoryContent(content: unknown): string {
+  const raw = String(content || "").trim();
+  if (!raw) return "";
+
+  try {
+    const qa = JSON.parse(raw);
+    const userText = String(qa?.user || "").trim();
+    const assistantText = String(qa?.assistant || "").trim();
+    if (userText && assistantText && assistantText !== userText) {
+      return `User:\n${userText}\n\nAssistant:\n${assistantText}`;
+    }
+    return userText || assistantText || raw;
+  } catch {
+    return raw;
+  }
+}
+
 function formatMemoryInjection(chunks: any[]): string {
   if (!chunks || chunks.length === 0) return "";
-  const formatted = chunks.map((c: any) => c?.content || c?.text || "").filter(Boolean).join("\n\n");
-  if (!formatted) return "";
-  return `<relevant_context>\n${formatted}\n</relevant_context>`;
+  console.log("[memsense] formatting", chunks.length, "chunks");
+
+  const parts: string[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < chunks.length; i++) {
+    const c = chunks[i];
+    const content = c?.content || c?.text || "";
+    if (!content) continue;
+
+    const contentLen = content.length;
+    const taskTagLen = (c?.task_tag || "").length;
+    console.log(`[memsense] chunk[${i}]: content=${contentLen} chars, task_tag=${taskTagLen} chars`);
+
+    const meta: string[] = [];
+    if (c?.task_tag) meta.push(`Summary: ${c.task_tag}`);
+    if (c?.timestamp_ms) {
+      const dt = new Date(Number(c.timestamp_ms));
+      if (!isNaN(dt.getTime())) meta.push(`Date: ${dt.toISOString().split("T")[0]}`);
+    }
+    if (c?.memory_kind) meta.push(`Kind: ${c.memory_kind}`);
+
+    let block = "";
+    if (meta.length) block += `[${meta.join(" | ")}]\n`;
+
+    const displayContent = renderMemoryContent(content);
+    if (!displayContent) continue;
+    const contentKey = displayContent.replace(/\s+/g, " ").slice(0, 1000);
+    seen.add(contentKey);
+    block += displayContent;
+
+    const neighbors = c?.source !== "eval_ingest_session" && Array.isArray(c?.neighbors)
+      ? [...c.neighbors].sort((a, b) => Number(a?.neighbor_distance || 0) - Number(b?.neighbor_distance || 0))
+      : [];
+    for (const n of neighbors) {
+      const neighborContent = renderMemoryContent(n?.content || "");
+      if (!neighborContent) continue;
+      const neighborKey = neighborContent.replace(/\s+/g, " ").slice(0, 1000);
+      if (seen.has(neighborKey)) continue;
+      seen.add(neighborKey);
+      const distance = Number(n?.neighbor_distance || 0);
+      const label = distance < 0 ? "Previous turn" : "Next turn";
+      block += `\n\n[${label}]\n${neighborContent}`;
+    }
+
+    parts.push(block);
+  }
+
+  if (!parts.length) return "";
+  return `<relevant_context>\n${parts.join("\n\n---\n\n")}\n</relevant_context>`;
 }
 
 
@@ -123,35 +290,64 @@ export default {
   description: "Memsense memory plugin for OpenClaw",
   kind: "memory",
   register(api: OpenClawPluginApi) {
+    const pluginConfig = ((api as any).pluginConfig && typeof (api as any).pluginConfig === "object")
+      ? (api as any).pluginConfig as Record<string, unknown>
+      : {};
+    const serviceUrl = typeof pluginConfig.serviceUrl === "string" ? pluginConfig.serviceUrl.trim() : "";
+    if (serviceUrl) MEMSENSE_API_URL = normalizeBaseUrl(serviceUrl);
+    const pluginServiceMode = typeof pluginConfig.serviceMode === "string"
+      ? pluginConfig.serviceMode
+      : pluginConfig.localMode === false
+        ? "external"
+        : undefined;
+    let localServiceStarted = false;
+
     api.registerService({
       id: "memsense-server",
       async start(ctx) {
+        if (!(await shouldStartLocalService(ctx, pluginServiceMode))) return;
         const scriptPath = join(__dirname, "scripts", "start-bash.sh");
-        spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit", detached: true });
-        ctx.logger.info("memsense server started");
+        const child = spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit", detached: true });
+        child.unref();
+        localServiceStarted = true;
+        ctx.logger.info(`memsense local service start requested; API URL ${MEMSENSE_API_URL}`);
       },
       async stop(ctx) {
+        if (!localServiceStarted) {
+          ctx.logger.info("memsense local service stop skipped; this plugin instance did not start local services");
+          return;
+        }
         const scriptPath = join(__dirname, "scripts", "stop-bash.sh");
         spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit" });
         ctx.logger.info("memsense server stopped");
       },
     });
+
+    function resolveUserId(ctx: any, event: any): string | null {
+      const direct = ctx?.userId || event?.userId || null;
+      if (direct) return direct;
+      const sk = String(ctx?.sessionKey || event?.sessionKey || '');
+      const m = sk.match(/openresponses-user:([^:\s]+)/);
+      return m ? m[1] : null;
+    }
+
     api.on("llm_input", async (event: any, ctx: any) => {
       const sid = ctx?.sessionId || event?.sessionId;
       if (shouldSkipAutoCapture(sid, ctx, event)) return;
 
-      let prompt = canonicalizeUserText(String(event?.prompt || ""));
-      // Remove injected context before saving
-      prompt = prompt.replace(/<relevant_context>[\s\S]*?<\/relevant_context>\s*/g, '').trim();
+      // Remove injected context before canonicalization
+      let rawPrompt = String(event?.prompt || "").replace(/<relevant_context>[\s\S]*?<\/relevant_context>\s*/g, '').trim();
+      let prompt = canonicalizeUserText(rawPrompt);
       if (!prompt) return;
       const decision = triggerPipeline.decide(prompt);
+      const resolvedUserId = resolveUserId(ctx, event);
       sessionPendingAutoSave.set(String(sid), {
         user: prompt,
         tags: decision.tags || [],
         taskTag: decision.tags?.[0] || null,
         source: 'session_auto',
         agentId: String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
-        userId: ctx?.userId || event?.userId || null,
+        userId: resolvedUserId,
       });
     });
 
@@ -173,7 +369,7 @@ export default {
           scope: "user",
           session_id: String(sid),
           agent_id: pending.agentId || String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
-          user_id: pending.userId || ctx?.userId || event?.userId || null,
+          user_id: pending.userId || resolveUserId(ctx, event),
           content: buildCanonicalQaJson({ user: pending.user, assistant }),
           task_tag: pending.taskTag,
           tags: pending.tags,
@@ -206,13 +402,20 @@ export default {
         return;
       }
       try {
-        console.log("[memsense] calling search API...");
+        // For eval sessions with per-question user keys (e.g. memsense_test_eval-conv-26-q5),
+        // strip the -qN suffix so memory search finds chunks under the base user_id.
+        let searchUserId = resolveUserId(ctx, event);
+        if (searchUserId && /^memsense_test_.*-q\d+$/.test(searchUserId)) {
+          searchUserId = searchUserId.replace(/-q\d+$/, '');
+          console.log("[memsense] eval mode: stripped -qN suffix, searchUserId=", searchUserId);
+        }
+        console.log("[memsense] calling search API...", { searchUserId });
         const result = await callApi("/v1/memory/search", {
           tenant_id: "default",
           scope: "user",
-          user_id: ctx?.userId || event?.userId || null,
+          user_id: searchUserId,
           query: prompt,
-          top_k: 5,
+          top_k: 4,
         });
         console.log("[memsense] search returned", result?.chunks?.length || 0, "chunks");
         const injection = formatMemoryInjection(result?.chunks || []);
@@ -246,9 +449,11 @@ export default {
             agent_id: params.agent_id,
             user_id: params.user_id,
             query: params.query,
-            top_k: params.top_k ?? 8,
+            top_k: params.top_k ?? 4,
           });
-          return ok({ chunks }, traceId);
+          const rawChunks = chunks?.chunks || chunks || [];
+          const cleanChunks = rawChunks.map(({ embedding, ...rest }: any) => rest);
+          return ok({ chunks: cleanChunks }, traceId);
         } catch (e: any) {
           return fail("SEARCH_FAILED", e?.message || "search failed", traceId, true);
         }

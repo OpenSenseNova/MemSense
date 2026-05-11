@@ -3,9 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "license": "MIT",
   "description": "Memsense memory plugin for OpenClaw",
   "peerDependencies": {
     "openclaw": ">=2026.3.1"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",

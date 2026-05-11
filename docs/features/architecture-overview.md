@@ -56,6 +56,16 @@ flowchart LR
 
 ---
 
+## Design reference — retrieval, scoring, and forgetting
+
+The diagram below is the **full design reference** covering the save path, search path, scoring model, temporal decay, and management flows (forget / promote-demote / audit).
+
+![Memsense system flowchart — retrieval, scoring, and forgetting logic](../assets/system-flowchart.png)
+
+> **Note.** This diagram represents the target design. The current runtime implements the save / search topology, 8-route recall, MMR selection (λ = 0.78, duplicate threshold = 0.94), promote / demote ±0.15, and soft-delete forget as shown. The weighted base-score composition (`W_vec · vec + W_lex · lex + W_mem · mem + W_conf · conf + W_temp · temp`) and the per-kind temporal-decay windows (stable 180d / preference 21d / episodic 14d / ephemeral 3d) are the planned scoring model; the current code uses RRF rank fusion with `final_score = rrf_score + 0.1 · memory_score` and has `confidence` / `temporal_score` removed from the live scoring path (see `src/server/retrieval/rerank.js:49-52`). Treat the diagram as roadmap + mental model, not as a line-by-line runtime spec.
+
+---
+
 ## Layer 1 — Capture
 
 Capture is the point where agent history becomes memory.
@@ -107,16 +117,16 @@ This layer gives retrieval more structure than raw text similarity alone.
 
 When a query arrives, Memsense does not rely on a single route.
 
-Current retrieval path uses dual recall:
-- **vector recall** from embeddings
+Current retrieval path uses 8-route recall:
+- **vector recall** from full QA, user-side, assistant-side, next-user, and facet embeddings
 - **lexical recall** from PostgreSQL full-text search
 
-The candidate sets are merged before reranking.
+The route ranks are fused with RRF before MMR selection.
 
 Why this matters:
 - vector recall improves semantic coverage
 - lexical recall helps exact terms, entities, and phrasing
-- union recall is more robust than either route alone
+- route fusion is more robust than any single route alone
 
 ---
 
@@ -125,12 +135,13 @@ Why this matters:
 After candidate recall, Memsense applies retrieval-time selection rather than returning raw similarity top-k.
 
 Selection currently includes:
-- hybrid score computation
-- temporal scoring using `memory_kind`
+- RRF rank fusion
+- memory-score prior
+- session-first hybrid selection for evaluation data (`eval_ingest_session` remains prompt-visible; `eval_ingest_turn` only boosts the matching session)
 - redundancy-aware final selection
 
 This is the core of the “living memory” idea:
-retrieval should reflect not only similarity, but also time, stability, confidence, and diversity.
+retrieval should reflect not only similarity, but also reuse value and diversity.
 
 ---
 

@@ -4,7 +4,7 @@ Grade OpenClaw QA responses using LLM judge.
 Usage:
     uv run python judge.py output/answers.txt.json
     uv run python judge.py output/answers.txt.json --output output/grades.json
-    uv run python judge.py output/qa.memsense_test_3.jsonl \
+    uv run python judge.py output/qa.memsense_test_2.jsonl \
         --base-url https://ark.cn-beijing.volces.com/api/v3 \
         --token "" \
         --model deepseek-v3-2-251201 \

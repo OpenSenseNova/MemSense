@@ -33,7 +33,8 @@ async function main() {
 
   const pipeline = await get('/v1/dashboard/pipeline_status');
   assert(pipeline.ok === true, 'pipeline_status should return ok=true');
-  assert(pipeline.data?.chunks, 'pipeline_status should include chunks');
+  const hasChunksSection = pipeline.data?.sections?.some((s) => s?.key === 'chunks');
+  assert(hasChunksSection, 'pipeline_status should include chunks section');
   console.log('[smoke] pipeline_status ok');
 
   const recent = await post('/v1/memory/fetch_recent', { tenant_id: 'default', scope: 'user', limit: 5 });

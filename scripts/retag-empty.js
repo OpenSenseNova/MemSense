@@ -12,7 +12,7 @@ const [
 
 async function retagEmpty() {
   const result = await query(
-    `SELECT id, content FROM memory_chunks
+    `SELECT id, content, memory_kind, task_tag FROM memory_chunks
      WHERE status = 'active'
        AND (tags IS NULL OR jsonb_array_length(tags) = 0)
      ORDER BY id ASC`
@@ -24,13 +24,17 @@ async function retagEmpty() {
     try {
       console.log(`Processing chunk ${row.id}...`);
       const generated = await generateTagsWithOpenClaw(row.content);
+      if (!generated.tags.length && !generated.summary && !Object.keys(generated.facets || {}).length) {
+        console.log(`- Chunk ${row.id}: tagger unavailable or empty output, skipped`);
+        continue;
+      }
       const taskTag = generated.tags.length > 0 ? generated.tags.join('; ') : null;
 
       await query(
         `UPDATE memory_chunks
          SET tags = $2::jsonb, memory_kind = $3, task_tag = $4, updated_at = NOW()
          WHERE id = $1`,
-        [row.id, JSON.stringify(generated.tags), generated.memory_kind, taskTag]
+        [row.id, JSON.stringify(generated.tags), generated.memory_kind || row.memory_kind, taskTag || row.task_tag]
       );
 
       console.log(`✓ Chunk ${row.id}: ${generated.tags.length} tags, kind=${generated.memory_kind}`);

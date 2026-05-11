@@ -1,22 +1,29 @@
-version: '3.9'
 services:
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: memsense
       POSTGRES_PASSWORD: memsense
       POSTGRES_DB: memsense
     ports:
-      - '54329:5432'
+      - '${MEMSENSE_POSTGRES_PORT:-54329}:5432'
     volumes:
       - memsense-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memsense -d memsense"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   server:
-    image: node:22
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: memsense-app:local
     working_dir: /app
-    command: sh -c "npm install && npm run db:migrate && npm run server"
+    command: sh -c "npm run db:migrate && npm run server"
     environment:
-      MEMSENSE_DATABASE_URL: ${MEMSENSE_DATABASE_URL:-postgresql://memsense:memsense@postgres:5432/memsense}
+      MEMSENSE_DATABASE_URL: postgresql://memsense:memsense@postgres:5432/memsense
       MEMSENSE_PORT: ${MEMSENSE_PORT:-8787}
       MEMSENSE_EMBEDDING_PROVIDER: ${MEMSENSE_EMBEDDING_PROVIDER:-openai}
       MEMSENSE_OPENAI_BASE_URL: ${MEMSENSE_OPENAI_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
@@ -26,18 +33,26 @@ services:
       MEMSENSE_BGE_MODEL: ${MEMSENSE_BGE_MODEL:-BAAI/bge-large-zh-v1.5}
       MEMSENSE_DASHBOARD_TOKENS_JSON: ${MEMSENSE_DASHBOARD_TOKENS_JSON:-{"demo":"admin"}}
     ports:
-      - '8787:8787'
-    volumes:
-      - ./:/app
+      - '${MEMSENSE_HOST_PORT:-8787}:8787'
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"const port=process.env.MEMSENSE_PORT||8787; fetch('http://127.0.0.1:'+port+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   worker:
-    image: node:22
+    image: memsense-app:local
     working_dir: /app
-    command: sh -c "npm install && npm run worker"
+    command: sh -c "npm run worker"
     environment:
-      MEMSENSE_DATABASE_URL: ${MEMSENSE_DATABASE_URL:-postgresql://memsense:memsense@postgres:5432/memsense}
+      MEMSENSE_DATABASE_URL: postgresql://memsense:memsense@postgres:5432/memsense
       MEMSENSE_EMBEDDING_PROVIDER: ${MEMSENSE_EMBEDDING_PROVIDER:-openai}
       MEMSENSE_OPENAI_BASE_URL: ${MEMSENSE_OPENAI_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
       MEMSENSE_EMBEDDING_MODEL: ${MEMSENSE_EMBEDDING_MODEL:-text-embedding-v4}
@@ -46,34 +61,43 @@ services:
       MEMSENSE_BGE_MODEL: ${MEMSENSE_BGE_MODEL:-BAAI/bge-large-zh-v1.5}
       MEMSENSE_WORKER_MAX_ATTEMPTS: 5
       MEMSENSE_WORKER_IDLE_MS: 800
-    volumes:
-      - ./:/app
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      server:
+        condition: service_healthy
 
   tag-worker:
-    image: node:22
+    image: memsense-app:local
     working_dir: /app
-    command: sh -c "npm install && npm run tag-worker"
+    command: sh -c "npm run tag-worker"
     environment:
-      MEMSENSE_DATABASE_URL: ${MEMSENSE_DATABASE_URL:-postgresql://memsense:memsense@postgres:5432/memsense}
+      MEMSENSE_DATABASE_URL: postgresql://memsense:memsense@postgres:5432/memsense
       MEMSENSE_TAG_WORKER_MAX_ATTEMPTS: 4
       MEMSENSE_TAG_WORKER_IDLE_MS: 1200
-    volumes:
-      - ./:/app
+      MEMSENSE_TAGGER_BASE_URL: ${MEMSENSE_TAGGER_BASE_URL:-}
+      MEMSENSE_TAGGER_API_KEY: ${MEMSENSE_TAGGER_API_KEY:-}
+      MEMSENSE_TAGGER_MODEL: ${MEMSENSE_TAGGER_MODEL:-}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      server:
+        condition: service_healthy
 
   bge:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
+    build:
+      context: .
+      dockerfile: Dockerfile.bge
     profiles: ["local-bge"]
-    command: ["--model-id", "${MEMSENSE_BGE_MODEL:-BAAI/bge-large-zh-v1.5}", "--port", "8080"]
     environment:
-      HF_HOME: /data
+      MEMSENSE_BGE_HOST: 0.0.0.0
+      MEMSENSE_BGE_PORT: 8080
+      MEMSENSE_BGE_SAVE_DIR: /data
+      MEMSENSE_BGE_MODEL: ${MEMSENSE_BGE_MODEL:-BAAI/bge-large-zh-v1.5}
     volumes:
       - memsense-hf:/data
     ports:
-      - '8088:8080'
+      - '${MEMSENSE_BGE_HOST_PORT:-8088}:8080'
 
 volumes:
   memsense-pg:

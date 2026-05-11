@@ -4,30 +4,6 @@ export function clamp01(v, fb = 0) {
   return Math.max(0, Math.min(1, n));
 }
 
-function normalizeKind(kind) {
-  const k = String(kind || '').trim().toLowerCase();
-  if (['stable', 'preference', 'episodic', 'ephemeral'].includes(k)) return k;
-  return 'episodic';
-}
-
-function kindDecayDays(kind) {
-  switch (normalizeKind(kind)) {
-    case 'stable': return 180;
-    case 'preference': return 21;
-    case 'ephemeral': return 3;
-    case 'episodic':
-    default: return 14;
-  }
-}
-
-function temporalScore(timestampMs, memoryKind, nowMs = Date.now()) {
-  const ts = Number(timestampMs || nowMs);
-  const ageMs = Math.max(0, nowMs - ts);
-  const tauDays = kindDecayDays(memoryKind);
-  const score = Math.exp(-ageMs / (tauDays * 24 * 60 * 60 * 1000));
-  return Number(score.toFixed(6));
-}
-
 function parseEmbedding(raw) {
   if (Array.isArray(raw)) return raw.map(Number).filter((x) => Number.isFinite(x));
   const text = String(raw || '').trim();
@@ -70,42 +46,30 @@ function redundancySimilarity(candidate, selected) {
   return Math.max(emb, 0.35 * tags);
 }
 
-export function normalizeRows(rows = [], nowMs = Date.now()) {
-  return rows.map((r) => {
-    const memory_kind = normalizeKind(r.memory_kind);
-    return {
-      ...r,
-      memory_kind,
-      vector_score: clamp01(r.vector_score, 0),
-      lexical_score: clamp01(r.lexical_score, 0),
-      score: clamp01(r.score, 0.5),
-      confidence: clamp01(r.confidence, 0.7),
-      temporal_score: temporalScore(r.timestamp_ms, memory_kind, nowMs),
-      embedding: parseEmbedding(r.embedding),
-    };
-  });
+// SQL 已完成 RRF 融合，这里只做最终 final_score 计算：
+//   final_score = rrf_score + α * memory_score
+// memory_score (chunk.score) 是 chunk 自身质量分，作为全局先验保留；
+// confidence 和 temporal_score 已从评分链路移除（前者几乎恒为常数，后者依赖主观衰减窗口）。
+export function normalizeRows(rows = []) {
+  return rows.map((r) => ({
+    ...r,
+    score: clamp01(r.score, 0.5),
+    rrf_score: Number(r.rrf_score) || 0,
+    embedding: parseEmbedding(r.embedding),
+  }));
 }
 
-function baseRankedRows(rows = [], weights = { vector: 0.35, lexical: 0.2, memory: 0.15, confidence: 0.1, temporal: 0.2 }) {
+function rrfRankedRows(rows = [], alpha = 0.1) {
   return rows.map((r) => {
-    const final_score = Number((
-      weights.vector * r.vector_score +
-      weights.lexical * r.lexical_score +
-      weights.memory * r.score +
-      weights.confidence * r.confidence +
-      weights.temporal * r.temporal_score
-    ).toFixed(6));
+    const final_score = Number((r.rrf_score + alpha * r.score).toFixed(6));
     return {
       ...r,
       final_score,
       explain: {
-        vector_score: r.vector_score,
-        lexical_score: r.lexical_score,
+        rrf_score: r.rrf_score,
         memory_score: r.score,
-        confidence: r.confidence,
-        temporal_score: r.temporal_score,
-        memory_kind: r.memory_kind,
-        weights,
+        alpha,
+        routes: r.routes,
       },
     };
   }).sort((a, b) => b.final_score - a.final_score);
@@ -152,11 +116,10 @@ function diversifiedSelect(rows = [], topK = 8, lambda = 0.78, duplicateThreshol
 }
 
 export function hybridRerank(rows = [], topK = 8, options = {}) {
-  const nowMs = Number(options.nowMs || Date.now());
-  const weights = options.weights || { vector: 0.35, lexical: 0.2, memory: 0.15, confidence: 0.1, temporal: 0.2 };
+  const alpha = Number(options.alpha ?? 0.1);
   const lambda = Number(options.lambda ?? 0.78);
   const duplicateThreshold = Number(options.duplicateThreshold ?? 0.94);
-  const normalized = normalizeRows(rows, nowMs);
-  const ranked = baseRankedRows(normalized, weights);
+  const normalized = normalizeRows(rows);
+  const ranked = rrfRankedRows(normalized, alpha);
   return diversifiedSelect(ranked, Number(topK), lambda, duplicateThreshold).slice(0, Number(topK));
 }
