@@ -11,6 +11,8 @@ import { normalizeNaturalText, buildQaFromHistory, contentToText } from "./src/c
 import { buildCanonicalQaJson, canonicalizeUserText, selectFinalAssistantText } from "./src/capture/canonical-qa.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// When loaded from dist/index.js, __dirname is <project>/dist — go up to project root
+const rootDir = __dirname.endsWith("/dist") ? dirname(__dirname) : __dirname;
 
 function stripEnvQuotes(value: string): string {
   if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
@@ -20,7 +22,7 @@ function stripEnvQuotes(value: string): string {
 }
 
 function loadDotEnvSync() {
-  const envPath = join(__dirname, ".env");
+  const envPath = join(rootDir, ".env");
   if (!existsSync(envPath)) return;
   const text = readFileSync(envPath, "utf8");
   for (const rawLine of text.split(/\r?\n/)) {
@@ -306,7 +308,7 @@ export default {
       id: "memsense-server",
       async start(ctx) {
         if (!(await shouldStartLocalService(ctx, pluginServiceMode))) return;
-        const scriptPath = join(__dirname, "scripts", "start-bash.sh");
+        const scriptPath = join(rootDir, "scripts", "start-bash.sh");
         const child = spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit", detached: true });
         child.unref();
         localServiceStarted = true;
@@ -317,7 +319,7 @@ export default {
           ctx.logger.info("memsense local service stop skipped; this plugin instance did not start local services");
           return;
         }
-        const scriptPath = join(__dirname, "scripts", "stop-bash.sh");
+        const scriptPath = join(rootDir, "scripts", "stop-bash.sh");
         spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit" });
         ctx.logger.info("memsense server stopped");
       },
@@ -498,13 +500,16 @@ export default {
     api.registerCli(
       ({ program }) => {
         program
-          .command("memsense:ping")
+          .command("memsense-ping")
           .description("Ping memsense plugin")
           .action(() => {
             console.log("memsense: ok");
           });
       },
-      { commands: ["memsense:ping"] },
+      {
+        commands: ["memsense-ping"],
+        descriptors: [{ name: "memsense-ping", description: "Ping memsense plugin", hasSubcommands: false }],
+      },
     );
   },
 };

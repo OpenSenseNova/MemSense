@@ -117,26 +117,39 @@ MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 ### 3. 安装到 OpenClaw
 
 ```bash
-openclaw plugins install -l <path-to-MemSense>
-openclaw plugins enable MemSense
+npm ci && npm run build
+openclaw plugins install -l <path-to-MemSense> --dangerously-force-unsafe-install
+openclaw plugins enable memsense
 openclaw gateway restart
 ```
 
 > `-l` 表示从本地路径做 linked install，适合开发和调试插件时使用。
+> `--dangerously-force-unsafe-install` 是必须的，因为插件内部使用 `child_process` 来管理后台服务进程——OpenClaw 2026.4+ 的安全扫描会将此标记为危险代码，需要显式确认。
 > 如果 gateway service 还没有安装，请先启动或配置 gateway（例如 `openclaw gateway install`；本地 smoke 可用 `openclaw gateway --allow-unconfigured`）。如果之前安装过旧版 `MemSense`，请先卸载旧安装，或者使用干净 profile 安装当前分支。
 
-### 4. 绑定 memory slot
+### 4. 允许对话访问
+
+OpenClaw 2026.4+ 要求非内置插件必须显式声明才能接收对话内容（`llm_input` / `llm_output` 事件）：
+
+```bash
+openclaw config set plugins.entries.memsense.hooks.allowConversationAccess true
+openclaw gateway restart
+```
+
+> 如果跳过这一步，插件虽然会加载成功，但不会对任何对话进行记忆处理。
+
+### 5. 绑定 memory slot
 
 ```json
 {
   "plugins": {
-    "entries": { "MemSense": { "enabled": true } },
-    "slots":   { "memory": "MemSense" }
+    "entries": { "memsense": { "enabled": true } },
+    "slots":   { "memory": "memsense" }
   }
 }
 ```
 
-### 5. 打开 dashboard
+### 6. 打开 dashboard
 
 ```text
 http://127.0.0.1:8787/dashboard?token=demo
@@ -144,7 +157,7 @@ http://127.0.0.1:8787/dashboard?token=demo
 
 > `demo` 是默认开发 token。如果要把服务暴露到 localhost 之外，请先修改 `MEMSENSE_DASHBOARD_TOKENS_JSON`。
 
-### 6. 跑一次 smoke test
+### 7. 跑一次 smoke test
 
 ```bash
 MEMSENSE_SMOKE_BASE_URL=http://127.0.0.1:8787 \
@@ -165,7 +178,7 @@ npm run smoke:api
 | **Python** | >= 3.11 | 仅本地 BGE 无 Docker 模式和 `evaluation/` 需要 |
 | **OS** | macOS / Linux | Windows 可通过 Docker Desktop / WSL2 使用 |
 | **磁盘** | 约 1 GB 可用空间 | local 模式第一次会下载 `BAAI/bge-large-zh-v1.5` |
-| **OpenClaw** | >= 2026.3.1 | 已在 [`package.json`](package.json) 的 `peerDependencies` 中声明 |
+| **OpenClaw** | >= 2026.4 | 已在 [`package.json`](package.json) 的 `peerDependencies` 中声明 |
 
 Docker 不是必须的。Docker 快速开始是最省事的路径，因为它会一起启动 Postgres、server、workers 和 BGE。无 Docker 路径也在上面给出，适合本地安装。
 
@@ -449,7 +462,7 @@ uv run python evaluation/judge.py output/qa.MemSense_eval.jsonl \
 
 成功时，所有接口返回 `{ "ok": true, "data": ... }`。失败时返回 `{ "ok": false, "error": "..." }`，HTTP 状态码为 500。
 
-**鉴权。** Dashboard endpoints 需要 `x-MemSense-token: <token>` header，或者 `?token=<token>` query string。token 到 role 的映射来自 `MEMSENSE_DASHBOARD_TOKENS_JSON`。当前版本里，Memory endpoints `/v1/memory/*` 没有 token gate；如果要暴露到 localhost 之外，请在 gateway 层加保护。
+**鉴权。** Dashboard endpoints 需要 `x-memsense-token: <token>` header，或者 `?token=<token>` query string。token 到 role 的映射来自 `MEMSENSE_DASHBOARD_TOKENS_JSON`。当前版本里，Memory endpoints `/v1/memory/*` 没有 token gate；如果要暴露到 localhost 之外，请在 gateway 层加保护。
 
 路由定义在 [`src/server/app.js`](src/server/app.js)。
 
@@ -493,8 +506,11 @@ uv run python evaluation/judge.py output/qa.MemSense_eval.jsonl \
 
 ```json
 {
-  "id": "MemSense",
+  "id": "memsense",
   "kind": "memory",
+  "contracts": {
+    "tools": ["memory_search", "memory_fetch_recent"]
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
@@ -532,10 +548,10 @@ uv run python evaluation/judge.py output/qa.MemSense_eval.jsonl \
 |---|---|---|
 | Tool | `memory_search` | Top-k memory search；和 `/v1/memory/search` 表面一致，但移除了 `embedding` 字段 |
 | Tool | `memory_fetch_recent` | 最近 chunks；和 `/v1/memory/fetch_recent` 表面一致 |
-| Service | `MemSense-server` | 后台 lifecycle；Docker 模式下连接已运行 API，no-Docker local 模式下可用 `scripts/start-bash.sh` / `scripts/stop-bash.sh` 启停 |
-| CLI | `MemSense:ping` | 检查插件是否已加载 |
+| Service | `memsense-server` | 后台 lifecycle；Docker 模式下连接已运行 API，no-Docker local 模式下可用 `scripts/start-bash.sh` / `scripts/stop-bash.sh` 启停 |
+| CLI | `memsense-ping` | 检查插件是否已加载 |
 
-[快速开始第 4 步](#4-绑定-memory-slot) 的 slot binding 会告诉 OpenClaw：把 agent 的 `memory` slot 路由到 `MemSense`。
+[快速开始第 5 步](#5-绑定-memory-slot) 的 slot binding 会告诉 OpenClaw：把 agent 的 `memory` slot 路由到 `memsense`。
 
 ---
 

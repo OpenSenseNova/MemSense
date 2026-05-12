@@ -113,26 +113,41 @@ MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 ### 3. Install into OpenClaw
 
 ```bash
-openclaw plugins install -l <path-to-MemSense>
-openclaw plugins enable MemSense
+# Build the plugin first (required for OpenClaw ≥ 2026.4)
+npm ci
+npm run build
+
+openclaw plugins install -l --dangerously-force-unsafe-install <path-to-MemSense>
+openclaw plugins enable memsense
 openclaw gateway restart
 ```
+
+> **Why `--dangerously-force-unsafe-install`?** OpenClaw ≥ 2026.4 flags plugins that spawn child processes or read environment variables. MemSense uses both to manage the local API server — review [`index.ts`](index.ts) and the [`scripts/`](scripts/) directory before installing.
 
 > `-l` does a linked install from a local path, useful while iterating on the plugin.
 > If the gateway service is not installed yet, start/configure it first (`openclaw gateway install` or `openclaw gateway --allow-unconfigured` for a local smoke run). If an older `MemSense` install already exists, uninstall it or use a clean profile before installing this branch.
 
-### 4. Bind the memory slot
+### 4. Grant conversation access
+
+MemSense captures `llm_input` and `llm_output` events to build memory. OpenClaw ≥ 2026.4 requires an explicit opt-in for non-bundled plugins:
+
+```bash
+openclaw config set plugins.entries.memsense.hooks.allowConversationAccess true
+openclaw gateway restart
+```
+
+### 5. Bind the memory slot
 
 ```json
 {
   "plugins": {
-    "entries": { "MemSense": { "enabled": true } },
-    "slots":   { "memory": "MemSense" }
+    "entries": { "memsense": { "enabled": true } },
+    "slots":   { "memory": "memsense" }
   }
 }
 ```
 
-### 5. Open the dashboard
+### 6. Open the dashboard
 
 ```
 http://127.0.0.1:8787/dashboard?token=demo
@@ -140,7 +155,7 @@ http://127.0.0.1:8787/dashboard?token=demo
 
 > `demo` is the default development token. Change `MEMSENSE_DASHBOARD_TOKENS_JSON` before exposing the service beyond localhost.
 
-### 6. Smoke test
+### 7. Smoke test
 
 ```bash
 MEMSENSE_SMOKE_BASE_URL=http://127.0.0.1:8787 \
@@ -161,7 +176,7 @@ npm run smoke:api
 | **Python** | ≥ 3.11 | Only needed for local BGE without Docker, and for `evaluation/` |
 | **OS** | macOS / Linux | Windows works via Docker Desktop / WSL2 |
 | **Disk** | ~1 GB free | One-time download of `BAAI/bge-large-zh-v1.5` on first local run |
-| **OpenClaw** | ≥ 2026.3.1 | Declared as `peerDependencies` in [`package.json`](package.json) |
+| **OpenClaw** | ≥ 2026.4 | Declared as `peerDependencies` in [`package.json`](package.json); versions before 2026.4 can load `index.ts` directly without a build step |
 
 Docker is optional. The Docker quick start is the fastest path because it brings up Postgres, server, workers, and BGE together; the no-Docker path is documented above for local installs.
 
@@ -438,7 +453,7 @@ Leave unset to skip tagging; capture and retrieval still work, but `tags` and fa
 
 All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false, "error": "..." }` (HTTP 500) on failure.
 
-**Auth.** Dashboard endpoints require `x-MemSense-token: <token>` header *or* `?token=<token>` query string. Token-to-role mapping comes from `MEMSENSE_DASHBOARD_TOKENS_JSON`. Memory endpoints (`/v1/memory/*`) are not gated by token in the current build — gate them at your gateway when exposing beyond localhost.
+**Auth.** Dashboard endpoints require `x-memsense-token: <token>` header *or* `?token=<token>` query string. Token-to-role mapping comes from `MEMSENSE_DASHBOARD_TOKENS_JSON`. Memory endpoints (`/v1/memory/*`) are not gated by token in the current build — gate them at your gateway when exposing beyond localhost.
 
 📁 Routes defined in [`src/server/app.js`](src/server/app.js).
 
@@ -482,8 +497,11 @@ All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false
 
 ```json
 {
-  "id": "MemSense",
+  "id": "memsense",
   "kind": "memory",
+  "contracts": {
+    "tools": ["memory_search", "memory_fetch_recent"]
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
@@ -521,10 +539,10 @@ All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false
 |---|---|---|
 | Tool | `memory_search` | Top-k memory search; same surface as `/v1/memory/search`, with `embedding` field stripped |
 | Tool | `memory_fetch_recent` | Recent chunks; same surface as `/v1/memory/fetch_recent` |
-| Service | `MemSense-server` | Background lifecycle; in Docker mode it connects to the running API, in no-Docker local mode it can start/stop via `scripts/start-bash.sh` / `scripts/stop-bash.sh` |
-| CLI | `MemSense:ping` | Sanity check that the plugin is loaded |
+| Service | `memsense-server` | Background lifecycle; in Docker mode it connects to the running API, in no-Docker local mode it can start/stop via `scripts/start-bash.sh` / `scripts/stop-bash.sh` |
+| CLI | `memsense-ping` | Sanity check that the plugin is loaded |
 
-The slot binding in [Quick Start step 4](#4-bind-the-memory-slot) tells OpenClaw to route the agent's `memory` slot to `MemSense`.
+The slot binding in [Quick Start step 5](#5-bind-the-memory-slot) tells OpenClaw to route the agent's `memory` slot to `memsense`.
 
 ---
 

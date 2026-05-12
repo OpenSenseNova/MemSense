@@ -1,6 +1,9 @@
 {
   "id": "memsense",
   "kind": "memory",
+  "contracts": {
+    "tools": ["memory_search", "memory_fetch_recent"]
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": false,

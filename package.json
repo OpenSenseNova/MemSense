@@ -6,7 +6,7 @@
   "license": "MIT",
   "description": "Memsense memory plugin for OpenClaw",
   "peerDependencies": {
-    "openclaw": ">=2026.3.1"
+    "openclaw": ">=2026.4"
   },
   "peerDependenciesMeta": {
     "openclaw": {
@@ -20,7 +20,8 @@
     "worker": "node src/worker/index.js",
     "tag-worker": "node src/worker/tag-worker.js",
     "db:migrate": "node scripts/db-migrate.mjs",
-    "smoke:api": "node scripts/api-smoke.mjs"
+    "smoke:api": "node scripts/api-smoke.mjs",
+    "build": "tsc"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -30,5 +31,9 @@
     "extensions": [
       "./index.ts"
     ]
+  },
+  "devDependencies": {
+    "@types/node": "^25.7.0",
+    "typescript": "^6.0.3"
   }
 }
