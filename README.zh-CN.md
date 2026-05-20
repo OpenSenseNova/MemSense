@@ -114,17 +114,28 @@ MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 
 </details>
 
+> **快捷方式：** 运行 `bash scripts/install-openclaw-plugin.sh` 可自动完成第 3–5 步。
+
 ### 3. 安装到 OpenClaw
+
+**为什么需要 `--dangerously-force-unsafe-install`？** OpenClaw 2026.4+ 会将使用 `child_process` 或读取环境变量的插件标记为"不安全"。MemSense 两者都用到，用于管理后台服务进程——安装前建议先阅读 [`index.ts`](index.ts) 和 [`scripts/`](scripts/) 目录的内容。该参数是必须的，缺少它安装会被拒绝。
+
+推荐使用自动化脚本：
+
+```bash
+bash scripts/install-openclaw-plugin.sh
+```
+
+也可以手动执行以下命令：
 
 ```bash
 npm ci && npm run build
-openclaw plugins install -l <path-to-MemSense> --dangerously-force-unsafe-install
+openclaw plugins install -l --dangerously-force-unsafe-install <path-to-MemSense>
 openclaw plugins enable memsense
 openclaw gateway restart
 ```
 
 > `-l` 表示从本地路径做 linked install，适合开发和调试插件时使用。
-> `--dangerously-force-unsafe-install` 是必须的，因为插件内部使用 `child_process` 来管理后台服务进程——OpenClaw 2026.4+ 的安全扫描会将此标记为危险代码，需要显式确认。
 > 如果 gateway service 还没有安装，请先启动或配置 gateway（例如 `openclaw gateway install`；本地 smoke 可用 `openclaw gateway --allow-unconfigured`）。如果之前安装过旧版 `MemSense`，请先卸载旧安装，或者使用干净 profile 安装当前分支。
 
 ### 4. 允许对话访问
@@ -136,9 +147,20 @@ openclaw config set plugins.entries.memsense.hooks.allowConversationAccess true
 openclaw gateway restart
 ```
 
-> 如果跳过这一步，插件虽然会加载成功，但不会对任何对话进行记忆处理。
+> **这一步的作用是什么？** 如果跳过，插件虽然会加载成功，但 OpenClaw 会静默跳过所有对话事件的分发——即使插件显示为已启用，也不会捕获任何记忆。
 
 ### 5. 绑定 memory slot
+
+OpenClaw 使用 *slot* 机制将能力路由到对应插件。设置 `plugins.slots.memory = "memsense"` 告诉 OpenClaw 使用 MemSense 作为 memory 提供者。**仅启用插件（第 3 步）是不够的**——没有这个绑定，`memory_search` 和 `memory_fetch_recent` 工具不会被路由到 MemSense，记忆也不会注入到 prompt。
+
+**方式一 — CLI（推荐）：**
+
+```bash
+openclaw config set plugins.entries.memsense.enabled true
+openclaw config set plugins.slots.memory memsense
+```
+
+**方式二 — JSON：** 将以下内容合并到 OpenClaw 配置文件中（用 `openclaw config path` 查看路径，通常是 `~/.openclaw/config.json`）：
 
 ```json
 {
@@ -148,6 +170,8 @@ openclaw gateway restart
   }
 }
 ```
+
+> **注意：** 如果跳过这一步，`memory_search` / `memory_fetch_recent` 工具不会被路由到 MemSense，记忆检索将无法正常工作。
 
 ### 6. 打开 dashboard
 

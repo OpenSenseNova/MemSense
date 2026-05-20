@@ -110,7 +110,19 @@ MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 
 </details>
 
+> **Shortcut:** Run `bash scripts/install-openclaw-plugin.sh` to complete steps 3–5 automatically.
+
 ### 3. Install into OpenClaw
+
+**Why `--dangerously-force-unsafe-install`?** OpenClaw ≥ 2026.4 flags plugins that use `child_process` or read environment variables as "unsafe". MemSense uses both to manage the local API server — review [`index.ts`](index.ts) and the [`scripts/`](scripts/) directory before installing. The flag is required; the install will be rejected without it.
+
+You can run the automated script (recommended):
+
+```bash
+bash scripts/install-openclaw-plugin.sh
+```
+
+Or perform the steps manually:
 
 ```bash
 # Build the plugin first (required for OpenClaw ≥ 2026.4)
@@ -121,8 +133,6 @@ openclaw plugins install -l --dangerously-force-unsafe-install <path-to-MemSense
 openclaw plugins enable memsense
 openclaw gateway restart
 ```
-
-> **Why `--dangerously-force-unsafe-install`?** OpenClaw ≥ 2026.4 flags plugins that spawn child processes or read environment variables. MemSense uses both to manage the local API server — review [`index.ts`](index.ts) and the [`scripts/`](scripts/) directory before installing.
 
 > `-l` does a linked install from a local path, useful while iterating on the plugin.
 > If the gateway service is not installed yet, start/configure it first (`openclaw gateway install` or `openclaw gateway --allow-unconfigured` for a local smoke run). If an older `MemSense` install already exists, uninstall it or use a clean profile before installing this branch.
@@ -136,7 +146,20 @@ openclaw config set plugins.entries.memsense.hooks.allowConversationAccess true
 openclaw gateway restart
 ```
 
+> **What does this do?** Without this flag the plugin loads successfully, but OpenClaw will silently skip delivering every conversation event to it — meaning no memory will ever be captured, even though the plugin appears enabled.
+
 ### 5. Bind the memory slot
+
+OpenClaw uses a *slot* system to route capabilities to the correct plugin. Setting `plugins.slots.memory = "memsense"` tells OpenClaw to use MemSense as its memory provider. **Enabling the plugin alone (step 3) is not enough** — without this binding, the `memory_search` and `memory_fetch_recent` tools will not be routed to MemSense and memory will not be injected into prompts.
+
+**Option A — CLI (recommended):**
+
+```bash
+openclaw config set plugins.entries.memsense.enabled true
+openclaw config set plugins.slots.memory memsense
+```
+
+**Option B — JSON:** add the following to the OpenClaw config file (find its path with `openclaw config path`, typically `~/.openclaw/config.json`):
 
 ```json
 {
@@ -146,6 +169,8 @@ openclaw gateway restart
   }
 }
 ```
+
+> **Note:** if you skip this step, the `memory_search` / `memory_fetch_recent` tools will not be routed to MemSense and memory retrieval will not work.
 
 ### 6. Open the dashboard
 
