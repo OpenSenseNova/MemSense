@@ -119,7 +119,7 @@ MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 > [!TIP]
 > **一键完成**：运行以下命令可自动完成第 3–5 步，无需手动执行后续命令。
 > ```bash
-> bash scripts/install-openclaw-plugin.sh
+> bash scripts/install-openclaw-plugin.sh --force
 > ```
 
 如需手动操作，展开以下各步骤：
@@ -158,6 +158,7 @@ OpenClaw 使用 *slot* 机制将能力路由到对应插件。设置 `plugins.sl
 ```bash
 openclaw config set plugins.entries.memsense.enabled true
 openclaw config set plugins.slots.memory memsense
+openclaw gateway restart
 ```
 
 **方式二 — JSON：** 将以下内容合并到 OpenClaw 配置文件中（用 `openclaw config path` 查看路径，通常是 `~/.openclaw/config.json`）：
@@ -169,6 +170,12 @@ openclaw config set plugins.slots.memory memsense
     "slots":   { "memory": "memsense" }
   }
 }
+```
+
+然后重启 gateway，让 slot binding 生效：
+
+```bash
+openclaw gateway restart
 ```
 
 > **注意：** 如果跳过这一步，`memory_search` / `memory_fetch_recent` 工具不会被路由到 MemSense，记忆检索将无法正常工作。
