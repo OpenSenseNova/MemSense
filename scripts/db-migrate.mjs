@@ -1,10 +1,15 @@
-import fs from 'node:fs/promises';
 import { loadDotEnv } from '../src/env/load-env.js';
 
 await loadDotEnv();
-const { pool } = await import('../src/server/db/client.js');
+const [{ applySchemaMigration, getSchemaReadiness }, { pool }] = await Promise.all([
+  import('../src/server/db/readiness.js'),
+  import('../src/server/db/client.js'),
+]);
 
-const sql = await fs.readFile(new URL('../src/server/db/schema.sql', import.meta.url), 'utf8');
-await pool.query(sql);
+await applySchemaMigration();
+const readiness = await getSchemaReadiness();
+if (!readiness.ok) {
+  throw new Error(`[memsense] migration finished but schema is not ready: ${JSON.stringify(readiness)}`);
+}
 console.log('[memsense] migration done');
 await pool.end();
