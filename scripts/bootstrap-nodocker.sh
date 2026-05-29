@@ -87,9 +87,14 @@ if [[ "$STRATEGY" == "openai" ]]; then
   echo "[memsense] ensure MEMSENSE_OPENAI_API_KEY is set in .env"
 elif [[ "$STRATEGY" == "local" ]]; then
   echo "[memsense] no-docker local BGE mode selected"
+  BGE_MODEL="${MEMSENSE_BGE_MODEL:-}"
+  if [[ -z "$BGE_MODEL" ]]; then
+    BGE_MODEL="$(awk -F= '$1 == "MEMSENSE_BGE_MODEL" { sub(/^[^=]*=/, ""); print; exit }' .env)"
+  fi
+  BGE_MODEL="${BGE_MODEL:-BAAI/bge-large-zh-v1.5}"
   upsert_env MEMSENSE_EMBEDDING_PROVIDER 'bge_http'
   upsert_env MEMSENSE_BGE_ENDPOINT 'http://127.0.0.1:8080/embed'
-  upsert_env MEMSENSE_BGE_MODEL 'BAAI/bge-large-zh-v1.5'
+  upsert_env MEMSENSE_BGE_MODEL "$BGE_MODEL"
   # install bge python service
   PYTHON_BIN="${PYTHON_BIN:-python3}"
   VENV_DIR=".venv-bge"
@@ -100,8 +105,15 @@ elif [[ "$STRATEGY" == "local" ]]; then
   pip install --upgrade pip >/dev/null
   pip install fastapi uvicorn sentence-transformers >/dev/null
   # download hf model
-  mkdir -p $ROOT_DIR/.models
-  hf download $MEMSENSE_BGE_MODEL --cache-dir $ROOT_DIR/.models
+  mkdir -p "$ROOT_DIR/.models"
+  if command -v hf >/dev/null 2>&1; then
+    hf download "$BGE_MODEL" --cache-dir "$ROOT_DIR/.models"
+  elif command -v huggingface-cli >/dev/null 2>&1; then
+    huggingface-cli download "$BGE_MODEL" --cache-dir "$ROOT_DIR/.models"
+  else
+    echo "[memsense] Hugging Face CLI not found after installing sentence-transformers"
+    exit 1
+  fi
 else
   echo "[memsense] invalid strategy: $STRATEGY"
   echo "Usage: bash scripts/bootstrap-nodocker.sh [openai|local]"
