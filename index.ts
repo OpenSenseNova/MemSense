@@ -7,8 +7,8 @@ import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 
 import { TriggerPipeline } from "./src/trigger/trigger-pipeline.js";
-import { normalizeNaturalText, buildQaFromHistory, contentToText } from "./src/capture/message-normalize.js";
-import { buildCanonicalQaJson, canonicalizeUserText, selectFinalAssistantText } from "./src/capture/canonical-qa.js";
+import { normalizeNaturalText, buildQaFromHistory } from "./src/capture/message-normalize.js";
+import { buildAutoCaptureContent, hasOpenClawHeartbeatAssistant, isOpenClawHeartbeatText, prepareAutoCaptureUser, selectAutoCaptureAssistant } from "./src/capture/auto-capture.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // When loaded from dist/index.js, __dirname is <project>/dist — go up to project root
@@ -194,6 +194,7 @@ function isMeaningfulQuery(text: string): boolean {
   const t = String(text || "").trim();
   if (!t) return false;
   if (t.length < 4) return false;
+  if (isOpenClawHeartbeatText(t)) return false;
   if (/^(hi|hello|hey|你好|在吗|在？|在吗？|谢谢|thanks|ok|好的|嗯嗯)$/i.test(t)) return false;
   if (/^[?？!！。.，,\s]+$/.test(t)) return false;
   return true;
@@ -337,16 +338,16 @@ export default {
       const sid = ctx?.sessionId || event?.sessionId;
       if (shouldSkipAutoCapture(sid, ctx, event)) return;
 
-      // Remove injected context before canonicalization
-      let rawPrompt = String(event?.prompt || "").replace(/<relevant_context>[\s\S]*?<\/relevant_context>\s*/g, '').trim();
-      let prompt = canonicalizeUserText(rawPrompt);
-      if (!prompt) return;
-      const decision = triggerPipeline.decide(prompt);
+      const prepared = prepareAutoCaptureUser(event?.prompt || "", triggerPipeline);
+      if (!prepared.shouldCapture || !prepared.decision) {
+        sessionPendingAutoSave.delete(String(sid));
+        return;
+      }
       const resolvedUserId = resolveUserId(ctx, event);
       sessionPendingAutoSave.set(String(sid), {
-        user: prompt,
-        tags: decision.tags || [],
-        taskTag: decision.tags?.[0] || null,
+        user: prepared.user,
+        tags: prepared.decision.tags || [],
+        taskTag: prepared.decision.tags?.[0] || null,
         source: 'session_auto',
         agentId: String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
         userId: resolvedUserId,
@@ -356,14 +357,18 @@ export default {
     api.on("llm_output", async (event: any, ctx: any) => {
       const sid = ctx?.sessionId || event?.sessionId;
       if (shouldSkipAutoCapture(sid, ctx, event)) return;
+      if (hasOpenClawHeartbeatAssistant(event)) return;
       const pending = sessionPendingAutoSave.get(String(sid));
       if (!pending) return;
       try {
-        const fromAssistantTexts = selectFinalAssistantText(Array.isArray(event?.assistantTexts) ? event.assistantTexts : []);
-        const fromLastAssistant = contentToText(event?.lastAssistant?.content || event?.lastAssistant?.text || '');
-        const assistant = fromAssistantTexts || fromLastAssistant;
+        const assistant = selectAutoCaptureAssistant(event);
         if (!assistant) {
           console.warn('[memsense] auto-save skipped: empty assistant output', { sessionId: String(sid) });
+          return;
+        }
+        const content = buildAutoCaptureContent({ user: pending.user, assistant });
+        if (!content) {
+          console.warn('[memsense] auto-save skipped: empty canonical QA', { sessionId: String(sid) });
           return;
         }
         await callApi("/v1/memory/save", {
@@ -372,7 +377,7 @@ export default {
           session_id: String(sid),
           agent_id: pending.agentId || String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
           user_id: pending.userId || resolveUserId(ctx, event),
-          content: buildCanonicalQaJson({ user: pending.user, assistant }),
+          content,
           task_tag: pending.taskTag,
           tags: pending.tags,
           type_hint: "qa_chunk",
