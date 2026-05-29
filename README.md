@@ -584,9 +584,9 @@ The slot binding in [Quick Start step 5](#5-bind-the-memory-slot) tells OpenClaw
   <img alt="Memsense roadmap — from memory to continual learning" src="docs/assets/roadmap.png" width="100%" />
 </p>
 
-MemSense captures every trajectory with structured metadata (kind, tags, facets, outcome score, events) — the foundation for the next step: **refined trajectories flowing back into model training** (Capture → Refine Signal → Learn Model). MemSense does not upload, route, or store your trajectories or memory data on our servers; the entire system runs in your private environment, so data also stays completely local.
+MemSense captures every trajectory with structured metadata, including kind, tags, facets, outcome score, and events. This lays the foundation for the next step: **turning refined trajectories into signals that flow back into model training** — Capture → Refine Signal → Learn Model. Everything above this section is already runnable today; the Roadmap is the direction ahead.
 
-Everything *above* this section runs today; this section is the north star.
+Note: MemSense does not upload, route, or store your trajectories or memory data on our servers. The entire system runs in your private environment, and the data stays completely local.
 
 ---
 
