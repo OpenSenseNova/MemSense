@@ -197,6 +197,46 @@ npm run smoke:api
 
 > A successful run prints the health / setup / pipeline / memory checks and ends with `[smoke] all api smoke checks passed`.
 
+### Updating MemSense
+
+MemSense runs in your local/private environment, so remote updates are not pushed into your machine automatically. Pull the latest code, rebuild the local runtime, and reinstall the OpenClaw plugin only when plugin-side behavior changed.
+
+**Docker:**
+
+```bash
+git pull --ff-only origin main
+npm ci
+npm run build
+docker compose up -d --build server worker tag-worker
+docker compose ps
+```
+
+For local BGE Docker mode, run the same first three commands, then replace the Compose command with:
+
+```bash
+docker compose --profile local-bge up -d --build
+docker compose --profile local-bge ps
+```
+
+**No Docker:**
+
+```bash
+git pull --ff-only origin main
+npm ci
+npm run build
+bash scripts/stop-local.sh
+npm run db:migrate
+bash scripts/start-bash.sh
+```
+
+If the update changes `index.ts`, `openclaw.plugin.json`, plugin hooks, registered tools, or memory injection behavior, reinstall the linked OpenClaw plugin:
+
+```bash
+bash scripts/install-openclaw-plugin.sh --force
+```
+
+Updating code and rebuilding services does not delete memory data. Docker data stays in the `memsense-pg` volume; no-Docker data stays in your local PostgreSQL database. Do not run `docker compose down -v` unless you intentionally want to remove Docker volumes and reset local data.
+
 ---
 
 ## Prerequisites

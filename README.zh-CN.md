@@ -198,6 +198,46 @@ npm run smoke:api
 
 > 成功时会打印 health / setup / pipeline / memory 检查，最后以 `[smoke] all api smoke checks passed` 结束。
 
+### 更新 MemSense
+
+MemSense 运行在你的本地/私有环境中，远程更新不会自动推送到本机。更新时需要先拉取最新代码，再重建本地运行服务；只有插件侧行为变化时，才需要重新安装 OpenClaw 插件。
+
+**Docker：**
+
+```bash
+git pull --ff-only origin main
+npm ci
+npm run build
+docker compose up -d --build server worker tag-worker
+docker compose ps
+```
+
+如果使用本地 BGE Docker 模式，前面三条命令相同，只把 Compose 命令替换为：
+
+```bash
+docker compose --profile local-bge up -d --build
+docker compose --profile local-bge ps
+```
+
+**无 Docker：**
+
+```bash
+git pull --ff-only origin main
+npm ci
+npm run build
+bash scripts/stop-local.sh
+npm run db:migrate
+bash scripts/start-bash.sh
+```
+
+如果本次更新涉及 `index.ts`、`openclaw.plugin.json`、插件 hooks、注册 tools 或 memory 注入逻辑，需要重新安装 linked OpenClaw 插件：
+
+```bash
+bash scripts/install-openclaw-plugin.sh --force
+```
+
+更新代码和重建服务不会删除记忆数据。Docker 模式下数据保存在 `memsense-pg` volume；无 Docker 模式下数据保存在你的本地 PostgreSQL 数据库。除非你明确想重置本地数据，否则不要执行 `docker compose down -v`，它会删除 Docker volumes。
+
 ---
 
 ## 环境要求
