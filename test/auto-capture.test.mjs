@@ -22,10 +22,20 @@ test('OpenClaw heartbeat matcher handles optional brackets', () => {
   assert.equal(isOpenClawHeartbeatText('OpenClaw normal user request'), false);
 });
 
-test('auto capture skips normal prompt with no trigger', () => {
-  const r = prepareAutoCaptureUser('今天天气不错', new TriggerPipeline());
-  assert.equal(r.shouldCapture, false);
-  assert.equal(r.reason, 'no_trigger');
+test('auto capture accepts ordinary prompt without trigger', () => {
+  const r = prepareAutoCaptureUser('你好', new TriggerPipeline());
+  assert.equal(r.shouldCapture, true);
+  assert.equal(r.reason, 'auto_capture');
+  assert.equal(r.decision.source, 'auto_capture');
+  assert.deepEqual(r.decision.tags, []);
+});
+
+test('auto capture accepts substantive prompt without trigger', () => {
+  const r = prepareAutoCaptureUser('帮我总结一下这个项目的部署方式', new TriggerPipeline());
+  assert.equal(r.shouldCapture, true);
+  assert.equal(r.reason, 'auto_capture');
+  assert.equal(r.decision.source, 'auto_capture');
+  assert.deepEqual(r.decision.tags, []);
 });
 
 test('auto capture accepts explicit save trigger', () => {

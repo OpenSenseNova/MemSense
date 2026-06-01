@@ -1,5 +1,5 @@
 const EXPLICIT_PATTERNS = [
-  /(记住这个|把这条存下来|以后按这个来)/i,
+  /(请记住|帮我记住|记一下|记住这个|记住[：:]|把这条存下来|以后按这个来)/i,
   /(remember this|save this|store this)/i,
 ];
 

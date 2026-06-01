@@ -53,8 +53,6 @@ export class MemoryService {
 
   captureTurn({ tenantId, scope = "user", sessionId, userId, userText, assistantText, taskTag }) {
     const decision = this.triggers.decide(userText);
-    if (!decision.shouldSave) return { accepted: false, reason: "no_trigger" };
-
     const chunk = buildChunk({
       tenantId,
       scope,
@@ -63,8 +61,8 @@ export class MemoryService {
       userText,
       assistantText,
       tags: decision.tags,
-      taskTag,
-      source: decision.source,
+      taskTag: taskTag ?? decision.tags?.[0],
+      source: decision.shouldSave ? decision.source : "auto_capture",
     });
     const saved = this.save(chunk);
     return { ...saved, trigger: decision };

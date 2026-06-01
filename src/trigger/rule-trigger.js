@@ -1,7 +1,7 @@
 const DEFAULT_RULES = [
   { id: 'pref_like', pattern: /(我喜欢|i like)/i, tag: 'preference' },
   { id: 'pref_dislike', pattern: /(我不喜欢|i dislike|don't like)/i, tag: 'preference' },
-  { id: 'long_term', pattern: /(记住这个|以后按这个|remember this|from now on)/i, tag: 'long_term' },
+  { id: 'long_term', pattern: /(请记住|帮我记住|记一下|记住这个|记住[：:]|以后按这个|remember this|from now on)/i, tag: 'long_term' },
   { id: 'identity', pattern: /(我是|i am|my role is)/i, tag: 'profile' },
 ];
 

@@ -34,11 +34,16 @@ export function prepareAutoCaptureUser(rawPrompt, triggerPipeline) {
   }
 
   const decision = triggerPipeline.decide(user);
-  if (!decision.shouldSave) {
-    return { shouldCapture: false, reason: 'no_trigger', user, decision };
-  }
-
-  return { shouldCapture: true, reason: 'triggered', user, decision };
+  return {
+    shouldCapture: true,
+    reason: decision.shouldSave ? 'triggered' : 'auto_capture',
+    user,
+    decision: {
+      ...decision,
+      shouldSave: true,
+      source: decision.shouldSave ? decision.source : 'auto_capture',
+    },
+  };
 }
 
 export function selectAutoCaptureAssistant(event) {

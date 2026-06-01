@@ -12,11 +12,8 @@
     "esModuleInterop": false,
     "resolveJsonModule": true,
     "allowJs": true,
-    "types": ["node"],
-    "paths": {
-      "openclaw/plugin-sdk": ["/opt/homebrew/lib/node_modules/openclaw/dist/plugin-sdk/index.d.ts"]
-    }
+    "types": ["node"]
   },
-  "include": ["index.ts", "src/**/*.js"],
+  "include": ["index.ts", "src/**/*.js", "src/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "test"]
 }

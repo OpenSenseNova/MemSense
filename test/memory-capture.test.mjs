@@ -17,13 +17,17 @@ test('captureTurn saves when explicit trigger hit', () => {
   assert.equal(items.length, 1);
 });
 
-test('captureTurn skips when no trigger hit', () => {
+test('captureTurn saves when no trigger hit', () => {
   const service = new MemoryService();
   const r = service.captureTurn({
     tenantId: 't1',
+    scope: 'user',
+    sessionId: 's1',
     userText: '今天天气不错',
     assistantText: '是的',
   });
-  assert.equal(r.accepted, false);
-  assert.equal(r.reason, 'no_trigger');
+  assert.equal(r.accepted, true);
+  assert.equal(r.trigger.shouldSave, false);
+  const items = service.fetchRecent({ tenantId: 't1', scope: 'user', sessionId: 's1' });
+  assert.equal(items.length, 1);
 });

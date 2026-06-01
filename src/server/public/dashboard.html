@@ -260,11 +260,11 @@
             <input id="previewScope" class="search-input" placeholder="scope" value="user" />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="previewSessionId" class="search-input" placeholder="session_id" value="demo-session" />
-            <input id="previewAgentId" class="search-input" placeholder="agent_id" value="memsense" />
+            <input id="previewSessionId" class="search-input" placeholder="session_id（可选，留空=不过滤）" value="" />
+            <input id="previewAgentId" class="search-input" placeholder="agent_id（可选，留空=不过滤）" value="" />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="previewUserId" class="search-input" placeholder="user_id" value="demo-user" />
+            <input id="previewUserId" class="search-input" placeholder="user_id（可选，留空=不过滤）" value="" />
             <div class="limit">top_k <input id="previewTopK" type="number" min="1" max="20" value="4" /></div>
           </div>
           <div class="search-row" style="margin-top:10px">
@@ -279,11 +279,11 @@
             <input id="toolScope" class="search-input" placeholder="scope" value="user" />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="toolSessionId" class="search-input" placeholder="session_id（可选）" value="demo-session" />
-            <input id="toolAgentId" class="search-input" placeholder="agent_id（可选）" value="memsense" />
+            <input id="toolSessionId" class="search-input" placeholder="session_id（可选，留空=不过滤）" value="" />
+            <input id="toolAgentId" class="search-input" placeholder="agent_id（可选，留空=不过滤）" value="" />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="toolUserId" class="search-input" placeholder="user_id（可选）" value="demo-user" />
+            <input id="toolUserId" class="search-input" placeholder="user_id（可选，留空=不过滤）" value="" />
             <input id="toolQuery" class="search-input" placeholder="query" value="苹果" />
             <div class="limit">top_k <input id="toolTopK" type="number" min="1" max="20" value="4" /></div>
           </div>
@@ -298,11 +298,11 @@
             <input id="toolRecentScope" class="search-input" placeholder="scope" value="user" />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="toolRecentSessionId" class="search-input" placeholder="session_id（可选）" value="demo-session" />
-            <input id="toolRecentAgentId" class="search-input" placeholder="agent_id（可选）" value="memsense" />
+            <input id="toolRecentSessionId" class="search-input" placeholder="session_id（可选，留空=不过滤）" value="" />
+            <input id="toolRecentAgentId" class="search-input" placeholder="agent_id（可选，留空=不过滤）" value="" />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="toolRecentUserId" class="search-input" placeholder="user_id（可选）" value="demo-user" />
+            <input id="toolRecentUserId" class="search-input" placeholder="user_id（可选，留空=不过滤）" value="" />
             <div class="limit">limit <input id="toolRecentLimit" type="number" min="1" max="100" value="10" /></div>
             <button class="btn secondary" onclick="runToolFetchRecent()">Run memory_fetch_recent</button>
           </div>
@@ -700,7 +700,7 @@
             source: 'index.ts -> registerTool(memory_search) -> ok({ chunks }, traceId)',
             assembly_rule: '把后端 /v1/memory/search 的 data 取出后，包装成 { ok, degraded, trace_id, data: { chunks } }，再 JSON.stringify 返回给模型',
           },
-          model_visible_tool_result_template: prettyJson(toolPayloadEnvelope({ chunks: j?.data }, 'search_demo_trace')),
+          model_visible_tool_result_template: prettyJson(toolPayloadEnvelope({ chunks: j?.data?.chunks || [] }, 'search_demo_trace')),
         });
       } catch (e) {
         setToolResult(String(e?.message || e));

@@ -357,7 +357,10 @@ export default {
     api.on("llm_output", async (event: any, ctx: any) => {
       const sid = ctx?.sessionId || event?.sessionId;
       if (shouldSkipAutoCapture(sid, ctx, event)) return;
-      if (hasOpenClawHeartbeatAssistant(event)) return;
+      if (hasOpenClawHeartbeatAssistant(event)) {
+        sessionPendingAutoSave.delete(String(sid));
+        return;
+      }
       const pending = sessionPendingAutoSave.get(String(sid));
       if (!pending) return;
       try {
