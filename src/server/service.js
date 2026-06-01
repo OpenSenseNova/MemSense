@@ -582,11 +582,19 @@ function toDashboardMemoryRow(row) {
   };
 }
 
-export async function dashboardOverview({ q, limit = 20 }) {
-  const queryText = String(q || '').trim();
-  const search = queryText ? `%${queryText}%` : null;
-  const args = [search, Number(limit)];
-  const where = `WHERE (
+const DASHBOARD_STATUSES = new Set(['all', 'active', 'archived', 'deleted']);
+const DASHBOARD_KINDS = new Set(['all', 'stable', 'preference', 'episodic', 'ephemeral']);
+const DASHBOARD_SCOPE_MODES = new Set(['all', 'session', 'agent']);
+
+function clampInt(value, fallback, min, max) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, Math.trunc(n)));
+}
+
+function buildDashboardWhere({ search, status = 'all', kind = 'all', scopeMode = 'all', scopeValue = '' }) {
+  const args = [search];
+  const clauses = [`(
     $1::text IS NULL
     OR memory_id ILIKE $1
     OR tenant_id ILIKE $1
@@ -599,24 +607,104 @@ export async function dashboardOverview({ q, limit = 20 }) {
     OR COALESCE(source, '') ILIKE $1
     OR COALESCE(tags::text, '') ILIKE $1
     OR COALESCE(status, '') ILIKE $1
-  )`;
+  )`];
 
-  const totalQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where}`, [search]);
-  const activeQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'active'`, [search]);
-  const deletedQ = await query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${where} AND status = 'deleted'`, [search]);
-  const latestQ = await query(
-    `SELECT memory_id, tenant_id, scope, session_id, agent_id, user_id, content, memory_kind, tags, score, confidence, source, timestamp_ms, status
-     FROM memory_chunks ${where}
-     ORDER BY timestamp_ms DESC LIMIT $2`,
+  if (kind && kind !== 'all') {
+    args.push(kind);
+    clauses.push(`memory_kind = $${args.length}`);
+  }
+  if (status && status !== 'all') {
+    args.push(status);
+    clauses.push(`status = $${args.length}`);
+  }
+  if (scopeMode === 'session' && scopeValue) {
+    args.push(scopeValue);
+    clauses.push(`session_id = $${args.length}`);
+  }
+  if (scopeMode === 'agent' && scopeValue) {
+    args.push(scopeValue);
+    clauses.push(`agent_id = $${args.length}`);
+  }
+
+  return {
+    where: `WHERE ${clauses.join(' AND ')}`,
     args,
+  };
+}
+
+async function dashboardScopeValues({ search, status, kind, scopeMode }) {
+  if (scopeMode === 'all') return [];
+  const column = scopeMode === 'session' ? 'session_id' : 'agent_id';
+  const options = buildDashboardWhere({ search, kind, status });
+  const r = await query(
+    `SELECT ${column} AS value, MAX(timestamp_ms) AS last_seen
+     FROM memory_chunks ${options.where}
+       AND ${column} IS NOT NULL
+       AND ${column} <> ''
+     GROUP BY ${column}
+     ORDER BY last_seen DESC
+     LIMIT 200`,
+    options.args,
   );
+  return r.rows.map((row) => row.value).filter(Boolean);
+}
+
+export async function dashboardOverview({
+  q,
+  limit = 50,
+  offset = 0,
+  status = 'all',
+  kind = 'all',
+  scope_mode = 'all',
+  scope_value = '',
+}) {
+  const queryText = String(q || '').trim();
+  const search = queryText ? `%${queryText}%` : null;
+  const pageLimit = clampInt(limit, 50, 1, 500);
+  const pageOffset = clampInt(offset, 0, 0, 1000000);
+  const selectedStatus = DASHBOARD_STATUSES.has(String(status)) ? String(status) : 'all';
+  const selectedKind = DASHBOARD_KINDS.has(String(kind)) ? String(kind) : 'all';
+  const selectedScopeMode = DASHBOARD_SCOPE_MODES.has(String(scope_mode)) ? String(scope_mode) : 'all';
+  const selectedScopeValue = selectedScopeMode === 'all' ? '' : String(scope_value || '').trim();
+  const scoped = { scopeMode: selectedScopeMode, scopeValue: selectedScopeValue };
+  const base = buildDashboardWhere({ search, kind: selectedKind, ...scoped });
+  const rows = buildDashboardWhere({ search, kind: selectedKind, status: selectedStatus, ...scoped });
+  const rowArgs = [...rows.args, pageLimit, pageOffset];
+  const limitParam = `$${rowArgs.length - 1}`;
+  const offsetParam = `$${rowArgs.length}`;
+
+  const [totalQ, activeQ, deletedQ, selectedQ, latestQ, scopeValues] = await Promise.all([
+    query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${base.where}`, base.args),
+    query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${base.where} AND status = $${base.args.length + 1}`, [...base.args, 'active']),
+    query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${base.where} AND status = $${base.args.length + 1}`, [...base.args, 'deleted']),
+    query(`SELECT COUNT(*)::int AS n FROM memory_chunks ${rows.where}`, rows.args),
+    query(
+      `SELECT memory_id, tenant_id, scope, session_id, agent_id, user_id, content, memory_kind, tags, score, confidence, source, timestamp_ms, status
+       FROM memory_chunks ${rows.where}
+       ORDER BY timestamp_ms DESC LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      rowArgs,
+    ),
+    dashboardScopeValues({ search, kind: selectedKind, status: selectedStatus, scopeMode: selectedScopeMode }),
+  ]);
   const latest = latestQ.rows.map(toDashboardMemoryRow);
+  const selected = selectedQ.rows[0]?.n || 0;
   return {
     counts: {
       total: totalQ.rows[0]?.n || 0,
       active: activeQ.rows[0]?.n || 0,
       deleted: deletedQ.rows[0]?.n || 0,
-      showing: latest.filter((x) => x.status !== 'deleted').length,
+      selected,
+      showing: latest.length,
+    },
+    page: {
+      limit: pageLimit,
+      offset: pageOffset,
+      has_more: pageOffset + latest.length < selected,
+    },
+    scope: {
+      mode: selectedScopeMode,
+      value: selectedScopeValue,
+      values: scopeValues,
     },
     latest,
   };

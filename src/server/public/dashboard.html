@@ -69,6 +69,23 @@
     }
     .btn.secondary, .mini-btn.secondary { background: #24335f; }
     .mini-btn.danger { background: #5a2438; }
+    .pagination-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:10px; }
+    .pagination-controls { display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
+    .page-btn {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 8px;
+      cursor: pointer;
+      min-width: 36px;
+      min-height: 36px;
+      padding: 8px 10px;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .page-btn.active { background: #24418b; border-color: rgba(120,168,255,.65); }
+    .page-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .page-ellipsis { color: var(--muted); padding: 0 2px; }
     .error {
       background: rgba(122, 28, 53, .28);
       border: 1px solid rgba(255, 127, 159, .42);
@@ -196,13 +213,13 @@
     <div class="card search-card">
       <div class="search-row">
         <input id="q" class="search-input" placeholder="搜索 memory 内容、ID、tag、user、source、scope、status…" value="" />
-        <select id="statusFilter" onchange="renderRows(window.__latest || [])">
+        <select id="statusFilter" onchange="resetPagingAndLoad()">
           <option value="all">全部状态</option>
           <option value="active">active</option>
           <option value="archived">archived</option>
           <option value="deleted">deleted</option>
         </select>
-        <select id="kindFilter" onchange="renderRows(window.__latest || [])">
+        <select id="kindFilter" onchange="resetPagingAndLoad()">
           <option value="all">全部 kind</option>
           <option value="stable">stable</option>
           <option value="preference">preference</option>
@@ -210,8 +227,12 @@
           <option value="ephemeral">ephemeral</option>
         </select>
         <div class="limit">结果数 <input id="limit" type="number" min="1" max="200" value="50" /></div>
-        <button class="btn" onclick="loadAll()">搜索</button>
+        <button class="btn" onclick="resetPagingAndLoad()">搜索</button>
         <button class="btn secondary" onclick="resetSearch()">清空</button>
+      </div>
+      <div class="pagination-row">
+        <div id="pageInfo" class="hint">0-0 / 0</div>
+        <div id="pageControls" class="pagination-controls"></div>
       </div>
     </div>
 
@@ -293,12 +314,12 @@
     <div class="card search-card">
       <div class="scope-bar">
         <span class="scope-label">List Scope</span>
-        <select id="scopeMode" onchange="renderRows(window.__latest || [])">
+        <select id="scopeMode" onchange="changeScopeMode()">
           <option value="all">全部</option>
           <option value="session">按 session</option>
           <option value="agent">按 agent</option>
         </select>
-        <select id="scopeValue" onchange="renderRows(window.__latest || [])" style="display:none; min-width: 220px;"></select>
+        <select id="scopeValue" onchange="resetPagingAndLoad()" style="display:none; min-width: 220px;"></select>
       </div>
     </div>
 
@@ -313,6 +334,8 @@
     let token = initialToken;
     window.__contract = null;
     window.__latest = [];
+    window.__offset = 0;
+    window.__page = { limit: 50, offset: 0, selected: 0, has_more: false };
 
     function getAuthHeaders() {
       return { 'content-type': 'application/json', 'x-memsense-token': token || '' };
@@ -342,6 +365,8 @@
       byId('active').textContent = '-';
       byId('deleted').textContent = '-';
       byId('showing').textContent = '-';
+      byId('pageInfo').textContent = '0-0 / 0';
+      byId('pageControls').innerHTML = '';
       byId('pipelineStatus').innerHTML = '<div class="empty">已清除 token。</div>';
       byId('rows').innerHTML = '<div class="card empty">token 已清除，点击“保存并加载”继续。</div>';
       setToolResult('Tool result will appear here.');
@@ -424,33 +449,38 @@
       await loadOverview();
     }
 
-    function syncScopeOptions(items) {
+    function scopeLabel(mode) {
+      return mode === 'session' ? 'session' : 'agent';
+    }
+
+    function syncScopeOptions(scope = {}) {
       const mode = byId('scopeMode').value || 'all';
       const select = byId('scopeValue');
-      const list = Array.isArray(items) ? items : [];
       if (mode === 'all') {
         select.style.display = 'none';
         select.innerHTML = '';
         return;
       }
-      const values = [...new Set(list.map((x) => mode === 'session' ? x?.meta?.session_id : x?.meta?.agent_id).filter(Boolean))];
-      select.innerHTML = values.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
-      select.style.display = values.length ? '' : 'none';
+      const current = String(scope.value ?? byId('scopeValue').value ?? '').trim();
+      const values = [...new Set(Array.isArray(scope.values) ? scope.values.filter(Boolean) : [])];
+      if (current && !values.includes(current)) values.unshift(current);
+      const label = scopeLabel(mode);
+      if (!values.length) {
+        select.innerHTML = `<option value="">无可用 ${escapeHtml(label)}</option>`;
+        select.disabled = true;
+      } else {
+        select.innerHTML = [
+          `<option value="">选择 ${escapeHtml(label)}</option>`,
+          ...values.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`),
+        ].join('');
+        select.disabled = false;
+        select.value = values.includes(current) ? current : '';
+      }
+      select.style.display = '';
     }
 
     function renderRows(items) {
-      syncScopeOptions(items);
-      const statusFilter = byId('statusFilter').value || 'all';
-      const kindFilter = byId('kindFilter').value || 'all';
-      const scopeMode = byId('scopeMode').value || 'all';
-      const scopeValue = byId('scopeValue').value || '';
-      const list = (items || []).filter((x) => {
-        if (statusFilter !== 'all' && x.status !== statusFilter) return false;
-        if (kindFilter !== 'all' && x?.meta?.memory_kind !== kindFilter) return false;
-        if (scopeMode === 'session' && scopeValue && x?.meta?.session_id !== scopeValue) return false;
-        if (scopeMode === 'agent' && scopeValue && x?.meta?.agent_id !== scopeValue) return false;
-        return true;
-      });
+      const list = Array.isArray(items) ? items : [];
       byId('showing').textContent = list.length;
       const root = byId('rows');
       root.innerHTML = '';
@@ -713,7 +743,16 @@
     }
 
     async function loadOverview() {
-      const payload = { q: byId('q').value || null, limit: Number(byId('limit').value || 50) };
+      const limit = Math.min(500, Math.max(1, Number(byId('limit').value || 50)));
+      const payload = {
+        q: byId('q').value || null,
+        limit,
+        offset: window.__offset || 0,
+        status: byId('statusFilter').value || 'all',
+        kind: byId('kindFilter').value || 'all',
+        scope_mode: byId('scopeMode').value || 'all',
+        scope_value: byId('scopeMode').value === 'all' ? null : byId('scopeValue').value || null,
+      };
       const r = await fetch('/v1/dashboard/overview', { method:'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j?.error || `overview failed: ${r.status}`);
@@ -721,7 +760,18 @@
       byId('active').textContent = j.data.counts.active;
       byId('deleted').textContent = j.data.counts.deleted;
       byId('showing').textContent = j.data.counts.showing ?? 0;
+      window.__page = {
+        ...(j.data.page || {}),
+        selected: j.data.counts.selected ?? j.data.counts.showing ?? 0,
+      };
+      window.__offset = window.__page.offset || 0;
       window.__latest = j.data.latest || [];
+      if (!window.__latest.length && window.__page.selected > 0 && window.__offset > 0) {
+        window.__offset = Math.max(0, window.__offset - (window.__page.limit || limit));
+        return loadOverview();
+      }
+      syncScopeOptions(j.data.scope || {});
+      renderPagination();
       renderRows(window.__latest);
     }
 
@@ -751,10 +801,61 @@
 
     function resetSearch() {
       byId('q').value = '';
+      window.__offset = 0;
       loadAll();
     }
 
-    byId('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') loadAll(); });
+    function resetPagingAndLoad() {
+      window.__offset = 0;
+      loadAll();
+    }
+
+    function changeScopeMode() {
+      byId('scopeValue').value = '';
+      resetPagingAndLoad();
+    }
+
+    function gotoPage(page) {
+      const limit = window.__page?.limit || Number(byId('limit').value || 50);
+      const selected = window.__page?.selected || 0;
+      const totalPages = Math.max(1, Math.ceil(selected / limit));
+      const nextPage = Math.min(totalPages, Math.max(1, Number(page) || 1));
+      window.__offset = (nextPage - 1) * limit;
+      loadAll();
+    }
+
+    function visiblePages(currentPage, totalPages) {
+      const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+      return [...pages]
+        .filter((x) => x >= 1 && x <= totalPages)
+        .sort((a, b) => a - b);
+    }
+
+    function renderPagination() {
+      const limit = window.__page?.limit || Number(byId('limit').value || 50);
+      const offset = window.__page?.offset || 0;
+      const selected = window.__page?.selected || 0;
+      const count = window.__latest.length;
+      const totalPages = Math.max(1, Math.ceil(selected / limit));
+      const currentPage = Math.min(totalPages, Math.floor(offset / limit) + 1);
+      const start = selected ? offset + 1 : 0;
+      const end = offset + count;
+      byId('pageInfo').textContent = `${start}-${end} / ${selected}`;
+
+      const parts = [
+        `<button class="page-btn" ${currentPage <= 1 ? 'disabled' : ''} onclick="gotoPage(${currentPage - 1})">上一页</button>`,
+      ];
+      let last = 0;
+      for (const page of visiblePages(currentPage, totalPages)) {
+        if (page - last > 1) parts.push('<span class="page-ellipsis">…</span>');
+        parts.push(`<button class="page-btn ${page === currentPage ? 'active' : ''}" onclick="gotoPage(${page})">${page}</button>`);
+        last = page;
+      }
+      parts.push(`<button class="page-btn" ${currentPage >= totalPages ? 'disabled' : ''} onclick="gotoPage(${currentPage + 1})">下一页</button>`);
+      byId('pageControls').innerHTML = parts.join('');
+    }
+
+    byId('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') resetPagingAndLoad(); });
     byId('tokenInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveTokenAndReload(); });
     syncTokenUi();
     loadAll();
