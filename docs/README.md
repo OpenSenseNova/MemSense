@@ -1,4 +1,4 @@
-# Memsense Docs
+# MemSense Docs
 
 > Docs hub for onboarding, architecture, retrieval, and operations.
 
@@ -8,9 +8,10 @@
 
 ## Reading paths
 
-### 1) I want to try Memsense quickly
+### 1) I want to try MemSense quickly
 - [`../README.md`](../README.md) — product story + quick start
-- [`features/no-docker-quickstart.md`](features/no-docker-quickstart.md) — simplest local path without Docker
+- [`features/update-guide.md`](features/update-guide.md) — update MemSense
+- [`features/no-docker-quickstart.md`](features/no-docker-quickstart.md) — advanced macOS / Linux setup without Docker
 - [`features/local-bge-oneclick.md`](features/local-bge-oneclick.md) — local embedding setup
 - [`features/api-smoke-test.md`](features/api-smoke-test.md) — verify the system is actually working
 
@@ -28,7 +29,7 @@
 
 ## System mental model
 
-Memsense can be understood in four layers:
+MemSense can be understood in four layers:
 
 1. **capture** — online interaction becomes memory chunks
 2. **enrichment** — embeddings, tags, and memory semantics are added
@@ -46,7 +47,8 @@ That is the system meaning of:
 | Area | Page | What it covers |
 |---|---|---|
 | Product | [`../README.md`](../README.md) | Vision, story, quick start |
-| Setup | [`features/no-docker-quickstart.md`](features/no-docker-quickstart.md) | Local startup without Docker |
+| Setup | [`features/update-guide.md`](features/update-guide.md) | Update MemSense |
+| Setup | [`features/no-docker-quickstart.md`](features/no-docker-quickstart.md) | Advanced macOS / Linux startup without Docker |
 | Setup | [`features/local-bge-oneclick.md`](features/local-bge-oneclick.md) | Local embedding service |
 | Architecture | [`features/architecture-overview.md`](features/architecture-overview.md) | System flow and data movement |
 | Retrieval | [`features/retrieval-algorithm.md`](features/retrieval-algorithm.md) | Dual recall, scoring, MMR-style selection |

@@ -21,7 +21,7 @@
 
 MemSense is an open-source memory plugin built for OpenClaw, turning long-term memory from unstable and hard to inspect into a reliable, manageable foundation.
 It preserves QA turns and manages memory with clear rules, reducing information loss, conflicts, and memory that gets messier over time.
-Ready to run with Docker or no-Docker mode in a few commands. [**Quick Start**](#quick-start)
+Docker-first setup in a few commands, with advanced no-Docker docs available. [**Quick Start**](#quick-start)
 
 <p align="center">
   <img alt="MemSense demo showing OpenClaw remembering a user's favorite pixel art game" src="docs/assets/Image_en.png" width="100%" />
@@ -64,40 +64,68 @@ MemSense has a simple goal: make OpenClaw memory **reliable, controllable, and u
 
 ## Quick Start
 
-### 1. Choose an embedding mode
+MemSense setup has three steps: start the local service, connect it to OpenClaw, then verify the dashboard.
 
-| Mode | Best for | Requires |
-|---|---|---|
-| `local` | self-hosted, no external embedding API | Docker recommended; BGE model downloads on first run (~1 GB) |
-| `openai` | fastest startup | `MEMSENSE_OPENAI_API_KEY` in `.env` |
+Setup overview:
 
-### 2. Start MemSense
+- Docker / Docker Desktop: [Docker path (recommended)](#docker-path-recommended)
+- macOS / Linux no Docker: [advanced no-Docker setup](docs/features/no-docker-quickstart.md); Windows no-Docker install is still being tested
+- MemSense service already running: [Connect MemSense to OpenClaw](#2-connect-memsense-to-openclaw)
+- Setup completed: [Verify](#3-verify)
+
+### 1. Start the MemSense Service
+
+Choose an embedding mode:
+
+| Mode | Best for | Requires | Paths |
+|---|---|---|---|
+| `local` | self-hosted, no external embedding API | BGE model downloads on first run (~1 GB) | [Docker path](#docker-path-recommended) / [No Docker setup docs](docs/features/no-docker-quickstart.md) |
+| `openai` | fastest startup | `MEMSENSE_OPENAI_API_KEY` in `.env` | [Docker path](#docker-path-recommended) / [No Docker setup docs](docs/features/no-docker-quickstart.md) |
+
+The bootstrap scripts create `.env` from `.env.example` if needed. For `openai`, set `MEMSENSE_OPENAI_API_KEY` in `.env` before using memory capture or retrieval.
+
+### Docker Path (Recommended)
+
+Run **one** bootstrap command for the embedding mode you want.
+
+<table>
+<tr>
+<td width="50%">
+
+**Local embedding**
 
 ```bash
-cp .env.example .env
-bash scripts/bootstrap.sh local    # local embedding; first run downloads the BGE model unless cached
-# or:
-bash scripts/bootstrap.sh openai   # cloud embedding (set MEMSENSE_OPENAI_API_KEY in .env first)
+# macOS / Linux / WSL2
+bash scripts/bootstrap.sh local
+
+# Windows
+.\scripts\bootstrap.ps1 local
 ```
+
+</td>
+<td width="50%">
+
+**OpenAI-compatible embedding**
+
+```bash
+# macOS / Linux / WSL2
+bash scripts/bootstrap.sh openai
+
+# Windows
+.\scripts\bootstrap.ps1 openai
+```
+
+</td>
+</tr>
+</table>
+
+Local embedding downloads the BGE model on first run unless cached. OpenAI-compatible embedding requires `MEMSENSE_OPENAI_API_KEY` in `.env`.
 
 Check services: `docker compose ps`
 
-> **First run** downloads the BGE model and builds service images (~a few minutes). Subsequent startups are fast.
+> In `local` mode, the first run downloads the BGE model and builds service images (~a few minutes). Subsequent startups are fast.
 
-<details>
-<summary>No Docker? (macOS / Linux alternative)</summary>
-
-```bash
-cp .env.example .env
-bash scripts/bootstrap-nodocker.sh local   # or: ...nodocker.sh openai
-bash scripts/start-bash.sh
-```
-
-On macOS, Homebrew installs PostgreSQL + pgvector automatically. On Linux, install Node.js 20+, PostgreSQL 16+, pgvector, Python 3, and venv support first.
-
-`bootstrap-nodocker.sh` installs deps + initializes the database; `start-bash.sh` starts server, embedding worker, tag worker, and the Python BGE service.
-
-</details>
+Then continue with step 2.
 
 <details>
 <summary>Port conflict? (custom host port)</summary>
@@ -110,17 +138,27 @@ MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 
 </details>
 
-### 3–5. Plugin installation
+### 2. Connect MemSense to OpenClaw
 
 > [!TIP]
-> **One-liner:** run the script below to complete steps 3–5 automatically — no manual commands needed.
+> **One-liner:** run the script for your shell to install and configure the OpenClaw plugin.
+>
+> macOS / Linux / WSL2:
 > ```bash
 > bash scripts/install-openclaw-plugin.sh --force
 > ```
+>
+> Windows PowerShell:
+> ```powershell
+> .\scripts\install-openclaw-plugin.ps1 -Force
+> ```
 
-To perform the steps manually, expand each section below:
+If you ran the one-liner above, skip to step 3. Expand the section below only for manual installation or troubleshooting.
 
-#### 3. Install into OpenClaw
+<details>
+<summary>Manual install / troubleshooting</summary>
+
+#### Install into OpenClaw
 
 **Why `--dangerously-force-unsafe-install`?** OpenClaw ≥ 2026.4 flags plugins that use `child_process` or read environment variables as "unsafe". MemSense uses both to manage the local API server — review [`index.ts`](index.ts) and the [`scripts/`](scripts/) directory before installing. The flag is required; the install will be rejected without it.
 
@@ -137,7 +175,7 @@ openclaw gateway restart
 > `-l` does a linked install from a local path, useful while iterating on the plugin.
 > If the gateway service is not installed yet, start/configure it first (`openclaw gateway install` or `openclaw gateway --allow-unconfigured` for a local smoke run). If an older `MemSense` install already exists, uninstall it or use a clean profile before installing this branch.
 
-#### 4. Grant conversation access
+#### Grant Conversation Access
 
 MemSense captures `llm_input` and `llm_output` events to build memory. OpenClaw ≥ 2026.4 requires an explicit opt-in for non-bundled plugins:
 
@@ -148,9 +186,9 @@ openclaw gateway restart
 
 > **What does this do?** Without this flag the plugin loads successfully, but OpenClaw will silently skip delivering every conversation event to it — meaning no memory will ever be captured, even though the plugin appears enabled.
 
-#### 5. Bind the memory slot
+#### Bind the Memory Slot
 
-OpenClaw uses a *slot* system to route capabilities to the correct plugin. Setting `plugins.slots.memory = "memsense"` tells OpenClaw to use MemSense as its memory provider. **Enabling the plugin alone (step 3) is not enough** — without this binding, the `memory_search` and `memory_fetch_recent` tools will not be routed to MemSense and memory will not be injected into prompts.
+OpenClaw uses a *slot* system to route capabilities to the correct plugin. Setting `plugins.slots.memory = "memsense"` tells OpenClaw to use MemSense as its memory provider. **Installing or enabling the plugin alone is not enough** — without this binding, the `memory_search` and `memory_fetch_recent` tools will not be routed to MemSense and memory will not be injected into prompts.
 
 **Option A — CLI (recommended):**
 
@@ -179,7 +217,9 @@ openclaw gateway restart
 
 > **Note:** if you skip this step, the `memory_search` / `memory_fetch_recent` tools will not be routed to MemSense and memory retrieval will not work.
 
-### 6. Open the dashboard
+</details>
+
+### 3. Verify
 
 ```
 http://127.0.0.1:8787/dashboard?token=demo
@@ -187,7 +227,7 @@ http://127.0.0.1:8787/dashboard?token=demo
 
 > `demo` is the default development token. Change `MEMSENSE_DASHBOARD_TOKENS_JSON` before exposing the service beyond localhost.
 
-### 7. Smoke test
+Smoke test:
 
 ```bash
 MEMSENSE_SMOKE_BASE_URL=http://127.0.0.1:8787 \
@@ -197,45 +237,34 @@ npm run smoke:api
 
 > A successful run prints the health / setup / pipeline / memory checks and ends with `[smoke] all api smoke checks passed`.
 
-### Updating MemSense
+### Update MemSense
 
-MemSense runs in your local/private environment, so remote updates are not pushed into your machine automatically. Pull the latest code, rebuild the local runtime, and reinstall the OpenClaw plugin only when plugin-side behavior changed.
+After you pull the latest code, run the update script for your shell:
 
-**Docker:**
+<table>
+<tr>
+<td width="50%">
 
-```bash
-git pull --ff-only origin main
-npm ci
-npm run build
-docker compose up -d --build server worker tag-worker
-docker compose ps
-```
-
-For local BGE Docker mode, run the same first three commands, then replace the Compose command with:
+**macOS / Linux / WSL2**
 
 ```bash
-docker compose --profile local-bge up -d --build
-docker compose --profile local-bge ps
+bash scripts/update.sh
 ```
 
-**No Docker:**
+</td>
+<td width="50%">
 
-```bash
-git pull --ff-only origin main
-npm ci
-npm run build
-bash scripts/stop-local.sh
-npm run db:migrate
-bash scripts/start-bash.sh
+**Windows**
+
+```powershell
+.\scripts\update.ps1
 ```
 
-If the update changes `index.ts`, `openclaw.plugin.json`, plugin hooks, registered tools, or memory injection behavior, reinstall the linked OpenClaw plugin:
+</td>
+</tr>
+</table>
 
-```bash
-bash scripts/install-openclaw-plugin.sh --force
-```
-
-Updating code and rebuilding services does not delete memory data. Docker data stays in the `memsense-pg` volume; no-Docker data stays in your local PostgreSQL database. Do not run `docker compose down -v` unless you intentionally want to remove Docker volumes and reset local data.
+The update script rebuilds local services, applies database migrations, and refreshes the OpenClaw plugin when the OpenClaw CLI is available. It does not pull code, rewrite `.env`, delete Docker volumes, or run `docker compose down -v`. See the full [Update guide](docs/features/update-guide.md).
 
 ---
 
@@ -243,14 +272,14 @@ Updating code and rebuilding services does not delete memory data. Docker data s
 
 | Requirement | Version | Notes |
 |---|---|---|
-| **Node.js** | ≥ 20 | Needed for the no-Docker path and local development |
+| **Node.js** | ≥ 20 | Needed for OpenClaw plugin install, the no-Docker path, and local development |
 | **PostgreSQL** | ≥ 16, with `pgvector` | Needed for the no-Docker path |
 | **Python** | ≥ 3.11 | Only needed for local BGE without Docker, and for `evaluation/` |
 | **OS** | macOS / Linux | Windows works via Docker Desktop / WSL2 |
 | **Disk** | ~1 GB free | One-time download of `BAAI/bge-large-zh-v1.5` on first local run |
 | **OpenClaw** | ≥ 2026.4 | Declared as `peerDependencies` in [`package.json`](package.json); versions before 2026.4 can load `index.ts` directly without a build step |
 
-Docker is optional. The Docker quick start is the fastest path because it brings up Postgres, server, workers, and BGE together; the no-Docker path is documented above for local installs.
+Docker is optional, but it is the recommended quick start because it brings up Postgres, server, workers, and BGE together. For macOS / Linux installs without Docker, use the [advanced no-Docker setup](docs/features/no-docker-quickstart.md).
 
 > **Choosing an embedding mode:** if you have a Qwen / OpenAI-compatible API key handy, `openai` mode skips the BGE download and starts in seconds. If you're running in an air-gapped or compliance-sensitive environment, pick `local`; pre-cache the Docker image and `BAAI/bge-large-zh-v1.5` model first, then MemSense can run without external embedding traffic.
 
@@ -614,14 +643,14 @@ All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false
 | Service | `memsense-server` | Background lifecycle; in Docker mode it connects to the running API, in no-Docker local mode it can start/stop via `scripts/start-bash.sh` / `scripts/stop-bash.sh` |
 | CLI | `memsense-ping` | Sanity check that the plugin is loaded |
 
-The slot binding in [Quick Start step 5](#5-bind-the-memory-slot) tells OpenClaw to route the agent's `memory` slot to `memsense`.
+The slot binding in [Quick Start: Bind the Memory Slot](#bind-the-memory-slot) tells OpenClaw to route the agent's `memory` slot to `memsense`.
 
 ---
 
 ## Roadmap — from memory to continual learning
 
 <p align="center">
-  <img alt="Memsense roadmap — from memory to continual learning" src="docs/assets/roadmap.png" width="100%" />
+  <img alt="MemSense roadmap — from memory to continual learning" src="docs/assets/roadmap.png" width="100%" />
 </p>
 
 MemSense captures every trajectory with structured metadata, including kind, tags, facets, outcome score, and events. This lays the foundation for the next step: **turning refined trajectories into signals that flow back into model training** — Capture → Refine Signal → Learn Model. Everything above this section is already runnable today; the Roadmap is the direction ahead.
@@ -638,6 +667,7 @@ Note: MemSense does not upload, route, or store your trajectories or memory data
 - [Dashboard & RBAC](docs/features/dashboard-rbac.md)
 - [Worker retry / DLQ](docs/features/worker-retry-dlq.md)
 - [Local BGE one-click setup](docs/features/local-bge-oneclick.md)
+- [Update guide](docs/features/update-guide.md)
 - [API smoke test](docs/features/api-smoke-test.md)
 - [No-Docker quickstart](docs/features/no-docker-quickstart.md)
 - [Evaluation README](evaluation/README.md)

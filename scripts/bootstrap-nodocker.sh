@@ -28,7 +28,7 @@ if ! command -v psql >/dev/null 2>&1; then
     brew services start postgresql@17
     brew link --overwrite postgresql@17
   else
-    echo "[memsense] Please install PostgreSQL 17+ manually"
+    echo "[memsense] Please install PostgreSQL 16+ manually"
     exit 1
   fi
 fi
