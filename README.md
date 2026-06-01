@@ -84,8 +84,6 @@ Choose an embedding mode:
 
 The bootstrap scripts create `.env` from `.env.example` if needed. For `openai`, set `MEMSENSE_OPENAI_API_KEY` in `.env` before using memory capture or retrieval.
 
-> **Embedding model changes:** use one embedding provider/model per database whenever possible. Vectors from different providers or models are not guaranteed to be comparable, and their dimensions may differ (for example, local BGE can be 1024-dimensional while some OpenAI-compatible / Doubao embeddings are 2048-dimensional). If you switch `MEMSENSE_EMBEDDING_PROVIDER`, `MEMSENSE_EMBEDDING_MODEL`, or `MEMSENSE_BGE_MODEL` on an existing database, old embeddings with incompatible dimensions are skipped by vector search. They remain stored and can still appear through lexical, recency, or dashboard views, but vector recall may miss them until you use a clean database or re-generate embeddings with the new model.
-
 ### Docker Path (Recommended)
 
 Run **one** bootstrap command for the embedding mode you want.
@@ -284,6 +282,8 @@ The update script rebuilds local services, applies database migrations, and refr
 Docker is optional, but it is the recommended quick start because it brings up Postgres, server, workers, and BGE together. For macOS / Linux installs without Docker, use the [advanced no-Docker setup](docs/features/no-docker-quickstart.md).
 
 > **Choosing an embedding mode:** if you have a Qwen / OpenAI-compatible API key handy, `openai` mode skips the BGE download and starts in seconds. If you're running in an air-gapped or compliance-sensitive environment, pick `local`; pre-cache the Docker image and `BAAI/bge-large-zh-v1.5` model first, then MemSense can run without external embedding traffic.
+
+> **After switching embedding models:** keep one embedding provider/model per database when possible. If you switch `MEMSENSE_EMBEDDING_PROVIDER`, `MEMSENSE_EMBEDDING_MODEL`, or `MEMSENSE_BGE_MODEL` on an existing database, old embeddings with incompatible dimensions are skipped by vector search. The memory records remain stored, but vector recall may miss them until you use a clean database or re-generate embeddings.
 
 ---
 

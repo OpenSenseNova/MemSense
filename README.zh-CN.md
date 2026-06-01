@@ -84,8 +84,6 @@ MemSense 安装分三步：启动本地服务，接入 OpenClaw，最后打开 d
 
 启动脚本会在需要时从 `.env.example` 创建 `.env`。如果选择 `openai`，请先在 `.env` 里设置 `MEMSENSE_OPENAI_API_KEY`，再使用记忆捕获或检索。
 
-> **切换 embedding 模型的影响：** 尽量让同一个数据库只使用一套 embedding provider / model。不同 provider 或 model 生成的向量不保证可直接比较，维度也可能不同，例如本地 BGE 可能是 1024 维，而部分 OpenAI-compatible / Doubao embedding 是 2048 维。如果在已有数据库上切换 `MEMSENSE_EMBEDDING_PROVIDER`、`MEMSENSE_EMBEDDING_MODEL` 或 `MEMSENSE_BGE_MODEL`，维度不兼容的旧 embedding 会被向量搜索跳过。旧记忆仍然保留，也可能通过关键词、最近记录或 dashboard 看到，但向量召回可能搜不到，直到你使用干净数据库或用新模型重新生成 embedding。
-
 ### Docker 路径
 
 根据你选择的 embedding 模式，**只运行其中一个**启动命令。
@@ -288,6 +286,8 @@ bash scripts/update.sh
 Docker 不是必须的，但它是推荐的快速开始路径，因为它会一起启动 Postgres、server、workers 和 BGE。macOS / Linux 如果不能使用 Docker，请看 [无 Docker 安装文档](docs/features/no-docker-quickstart.zh-CN.md)。
 
 > 选择 embedding 模式：如果你手边有 Qwen / OpenAI-compatible API key，`openai` 模式可以跳过 BGE 下载，几秒内启动。如果你在离线环境或对数据外发很敏感，选 `local`；提前缓存 Docker 镜像和 `BAAI/bge-large-zh-v1.5` 模型后，MemSense 可以不走外部 embedding API。
+
+> 切换 embedding 模型后：同一个数据库尽量只使用一套 embedding provider / model。如果你在已有数据库上切换 `MEMSENSE_EMBEDDING_PROVIDER`、`MEMSENSE_EMBEDDING_MODEL` 或 `MEMSENSE_BGE_MODEL`，维度不兼容的旧 embedding 会被向量搜索跳过。旧记忆仍然保留，但向量召回可能搜不到，直到使用干净数据库或重新生成 embedding。
 
 ---
 
