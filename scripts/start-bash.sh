@@ -6,6 +6,49 @@ cd "$ROOT_DIR"
 
 mkdir -p "$ROOT_DIR/.runtime"
 
+TAG_WORKER_ONLY=false
+RESTART=false
+HOST_DATABASE_URL=""
+
+usage() {
+  cat <<'EOF'
+Usage: bash scripts/start-bash.sh [options]
+
+Options:
+  --tag-worker-only       Start only the host tag-worker process
+  --database-url <url>    Database URL for --tag-worker-only
+  --restart              Stop an existing pid-file process before starting
+  -h, --help             Show this help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --tag-worker-only)
+      TAG_WORKER_ONLY=true
+      shift
+      ;;
+    --database-url)
+      [[ $# -ge 2 && "${2:-}" != -* ]] || { echo "[memsense] --database-url requires a value" >&2; exit 1; }
+      HOST_DATABASE_URL="$2"
+      shift 2
+      ;;
+    --restart)
+      RESTART=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "[memsense] unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
 if [[ ! -f .env ]]; then
   echo "[memsense] missing .env; create it first"
   exit 1
@@ -20,8 +63,22 @@ MEMSENSE_EMBEDDING_PROVIDER="${MEMSENSE_EMBEDDING_PROVIDER:-openai}"
 MEMSENSE_BGE_PORT="${MEMSENSE_BGE_PORT:-8080}"
 MEMSENSE_BGE_HOST_PORT="${MEMSENSE_BGE_HOST_PORT:-8088}"
 MEMSENSE_BGE_ENDPOINT="${MEMSENSE_BGE_ENDPOINT:-http://127.0.0.1:8080/embed}"
+MEMSENSE_POSTGRES_PORT="${MEMSENSE_POSTGRES_PORT:-54329}"
+MEMSENSE_TAG_WORKER_CONCURRENCY="${MEMSENSE_TAG_WORKER_CONCURRENCY:-3}"
 
 started=()
+
+positive_int_or_default() {
+  local value="$1"
+  local fallback="$2"
+  if [[ "$value" =~ ^[0-9]+$ ]] && (( value > 0 )); then
+    echo "$value"
+  else
+    echo "$fallback"
+  fi
+}
+
+MEMSENSE_TAG_WORKER_CONCURRENCY="$(positive_int_or_default "$MEMSENSE_TAG_WORKER_CONCURRENCY" 3)"
 
 port_in_use() {
   local port="$1"
@@ -43,6 +100,35 @@ fail() {
   echo "[memsense] $*" >&2
   cleanup_started
   exit 1
+}
+
+stop_process_if_requested() {
+  local name="$1"
+  local pid_file=".runtime/${name}.pid"
+  local pid
+  if [[ "$RESTART" != "true" || ! -f "$pid_file" ]]; then
+    return
+  fi
+  pid="$(cat "$pid_file")"
+  if kill "$pid" 2>/dev/null; then
+    echo "[memsense] stopped existing $name (pid: $pid)"
+  fi
+  rm -f "$pid_file"
+}
+
+stop_existing_tag_workers_if_requested() {
+  local pid_file pid
+  if [[ "$RESTART" != "true" ]]; then
+    return
+  fi
+  for pid_file in .runtime/tag-worker.pid .runtime/tag-worker-*.pid; do
+    [[ -f "$pid_file" ]] || continue
+    pid="$(cat "$pid_file")"
+    if kill "$pid" 2>/dev/null; then
+      echo "[memsense] stopped existing $(basename "$pid_file" .pid) (pid: $pid)"
+    fi
+    rm -f "$pid_file"
+  done
 }
 
 require_node_deps() {
@@ -82,6 +168,11 @@ start_process() {
   local name="$1"
   shift
   local pid
+  stop_process_if_requested "$name"
+  if [[ -f ".runtime/${name}.pid" ]] && kill -0 "$(cat ".runtime/${name}.pid")" 2>/dev/null; then
+    echo "[memsense] $name already running (pid: $(cat ".runtime/${name}.pid"))"
+    return
+  fi
   pid="$(start_detached ".runtime/${name}.log" "$@")"
   echo "$pid" > ".runtime/${name}.pid"
   started+=("$name")
@@ -91,6 +182,21 @@ start_process() {
     fail "$name failed to start"
   fi
   echo "[memsense] $name started (pid: $pid)"
+}
+
+start_tag_workers() {
+  local count="$MEMSENSE_TAG_WORKER_CONCURRENCY"
+  local i name
+  stop_existing_tag_workers_if_requested
+  for ((i = 1; i <= count; i++)); do
+    if (( count == 1 )); then
+      name="tag-worker"
+    else
+      name="tag-worker-${i}"
+    fi
+    start_process "$name" node src/worker/tag-worker.js
+  done
+  echo "[memsense] tag-worker concurrency: $count"
 }
 
 wait_http_ok() {
@@ -114,6 +220,21 @@ wait_http_ok() {
 }
 
 require_node_deps
+
+if [[ "$TAG_WORKER_ONLY" == "true" ]]; then
+  if [[ -z "$HOST_DATABASE_URL" ]]; then
+    HOST_DATABASE_URL="${MEMSENSE_HOST_DATABASE_URL:-postgresql://memsense:memsense@127.0.0.1:${MEMSENSE_POSTGRES_PORT}/memsense}"
+  fi
+  export MEMSENSE_DATABASE_URL="$HOST_DATABASE_URL"
+  export MEMSENSE_TAGGER_PROVIDER="${MEMSENSE_TAGGER_PROVIDER:-auto}"
+  export MEMSENSE_TAGGER_MODEL="${MEMSENSE_TAGGER_MODEL:-auto}"
+  export MEMSENSE_OPENCLAW_CLI="${MEMSENSE_OPENCLAW_CLI:-openclaw}"
+  start_tag_workers
+  echo "[memsense] host tag-workers started"
+  echo "[memsense] host tag-worker DB: $MEMSENSE_DATABASE_URL"
+  echo "[memsense] logs in $ROOT_DIR/.runtime/tag-worker*.log"
+  exit 0
+fi
 
 if port_in_use "$MEMSENSE_PORT"; then
   fail "port $MEMSENSE_PORT is already in use; choose another MEMSENSE_PORT or stop the listener"
@@ -142,7 +263,7 @@ start_process server node src/server/index.js
 wait_http_ok "http://127.0.0.1:${MEMSENSE_PORT}/healthz" server 45
 
 start_process worker node src/worker/index.js
-start_process tag-worker node src/worker/tag-worker.js
+start_tag_workers
 
 echo "[memsense] services started"
 for name in "${started[@]}"; do

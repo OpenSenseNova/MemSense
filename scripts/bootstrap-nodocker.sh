@@ -60,6 +60,14 @@ upsert_env() {
   fi
 }
 
+ensure_env_default() {
+  local key="$1"
+  local value="$2"
+  if ! grep -qE "^${key}=" .env; then
+    upsert_env "$key" "$value"
+  fi
+}
+
 STRATEGY="${1:-}"
 if [[ -z "$STRATEGY" ]]; then
   echo "Choose embedding strategy (no docker):"
@@ -78,6 +86,7 @@ upsert_env MEMSENSE_DATABASE_URL 'postgresql://127.0.0.1:5432/memsense'
 upsert_env MEMSENSE_PORT '8787'
 upsert_env MEMSENSE_API_URL 'http://127.0.0.1:8787'
 upsert_env MEMSENSE_DASHBOARD_TOKENS_JSON '{"demo":"admin"}'
+ensure_env_default MEMSENSE_TAG_WORKER_CONCURRENCY '3'
 
 npm install
 

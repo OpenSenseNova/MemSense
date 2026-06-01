@@ -6,15 +6,16 @@ cd "$ROOT_DIR"
 
 mkdir -p .runtime
 
-for name in bge server worker tag-worker; do
-  if [[ -f .runtime/${name}.pid ]]; then
-    pid="$(cat ".runtime/${name}.pid")"
+for pid_file in .runtime/bge.pid .runtime/server.pid .runtime/worker.pid .runtime/tag-worker.pid .runtime/tag-worker-*.pid; do
+  if [[ -f "$pid_file" ]]; then
+    name="$(basename "$pid_file" .pid)"
+    pid="$(cat "$pid_file")"
     if kill "$pid" 2>/dev/null; then
       echo "[memsense] stopped $name (pid: $pid)"
     else
       echo "[memsense] $name was not running (pid: $pid)"
     fi
-    rm -f ".runtime/${name}.pid"
+    rm -f "$pid_file"
   fi
 done
 

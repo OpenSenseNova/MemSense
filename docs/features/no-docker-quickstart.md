@@ -23,7 +23,7 @@ On macOS, the bootstrap script can install PostgreSQL and pgvector through Homeb
 
 ## Choose an embedding mode
 
-Run one setup path.
+Run one setup path. `bootstrap-nodocker.sh` is the first-time setup step; `start-bash.sh` starts the runtime processes after setup.
 
 ### Local embedding
 
@@ -50,9 +50,19 @@ This installs dependencies, initializes the database, and starts the server, emb
 ## Runtime controls
 
 ```bash
+# Start after the first bootstrap, after reboot, or after a manual stop
 bash scripts/start-bash.sh
+
+# Stop the local background processes when you are done or before changing .env
 bash scripts/stop-bash.sh
+
+# Restart already-running bash-managed processes in place
+bash scripts/start-bash.sh --restart
 ```
+
+`start-bash.sh` starts the local API server, embedding worker, tag worker, and the BGE service in local embedding mode. It expects `.env` and Node dependencies to exist, so run `bootstrap-nodocker.sh` first on a fresh checkout.
+
+`stop-bash.sh` stops the processes started by `start-bash.sh` and clears `.runtime` pid/log files. Use it before changing ports or providers in `.env`, before switching back to Docker, or when you no longer need the local service.
 
 Logs:
 - `.runtime/server.log`

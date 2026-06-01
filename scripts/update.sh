@@ -69,6 +69,53 @@ read_env() {
   awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, ""); print; exit }' .env
 }
 
+host_tag_worker_available() {
+  local provider
+  provider="$(read_env MEMSENSE_TAGGER_PROVIDER)"
+  provider="${provider:-auto}"
+  case "$provider" in
+    auto|openclaw|openclaw_cli)
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  if [[ "$DRY_RUN" == "true" ]]; then
+    return 0
+  fi
+  command -v openclaw >/dev/null 2>&1 && command -v npm >/dev/null 2>&1
+}
+
+ensure_node_deps() {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    return
+  fi
+  if [[ ! -d node_modules ]]; then
+    run npm ci
+  fi
+}
+
+start_host_tag_worker() {
+  local pg_host_port
+  pg_host_port="${MEMSENSE_POSTGRES_PORT:-$(read_env MEMSENSE_POSTGRES_PORT)}"
+  pg_host_port="${pg_host_port:-54329}"
+  log "using host tag-worker so tags can reuse OpenClaw's configured model"
+  run docker compose stop tag-worker
+  ensure_node_deps
+  run bash scripts/start-bash.sh \
+    --tag-worker-only \
+    --restart \
+    --database-url "postgresql://memsense:memsense@127.0.0.1:${pg_host_port}/memsense"
+}
+
+wait_memsense_api() {
+  local host_port
+  host_port="$(read_env MEMSENSE_HOST_PORT)"
+  host_port="${host_port:-$(read_env MEMSENSE_PORT)}"
+  host_port="${host_port:-8787}"
+  wait_http_ok "http://127.0.0.1:${host_port}/healthz" "MemSense API"
+}
+
 detect_strategy() {
   if [[ -n "$STRATEGY" ]]; then
     return
@@ -94,11 +141,30 @@ update_docker() {
     command -v docker >/dev/null 2>&1 || fail "Docker is required for docker runtime"
   fi
 
+  local use_host_tag_worker=false
+  if host_tag_worker_available; then
+    use_host_tag_worker=true
+  else
+    log "host OpenClaw tagger not available; Docker tag-worker will run and auto mode will skip tagging unless MEMSENSE_TAGGER_PROVIDER=openai is configured"
+  fi
+
   if [[ "$STRATEGY" == "openai" ]]; then
-    run docker compose up -d --build postgres server worker tag-worker
+    if [[ "$use_host_tag_worker" == "true" ]]; then
+      run docker compose up -d --build postgres server worker
+      wait_memsense_api
+      start_host_tag_worker
+    else
+      run docker compose up -d --build postgres server worker tag-worker
+    fi
   else
     export MEMSENSE_BGE_ENDPOINT="http://bge:8080/embed"
-    run docker compose --profile local-bge up -d --build
+    if [[ "$use_host_tag_worker" == "true" ]]; then
+      run docker compose --profile local-bge up -d --build postgres server worker bge
+      wait_memsense_api
+      start_host_tag_worker
+    else
+      run docker compose --profile local-bge up -d --build
+    fi
     local bge_host_port
     bge_host_port="$(read_env MEMSENSE_BGE_HOST_PORT)"
     bge_host_port="${bge_host_port:-8088}"

@@ -121,6 +121,8 @@ bash scripts/bootstrap.sh openai
 
 Local embedding downloads the BGE model on first run unless cached. OpenAI-compatible embedding requires `MEMSENSE_OPENAI_API_KEY` in `.env`.
 
+Tagging needs no separate model setup. The scripts default to `MEMSENSE_TAGGER_PROVIDER=auto`: when OpenClaw is available on the host, MemSense reuses OpenClaw's current model for tags and starts 3 host tag workers by default; otherwise tagging is skipped and capture/retrieval still work.
+
 Check services: `docker compose ps`
 
 > In `local` mode, the first run downloads the BGE model and builds service images (~a few minutes). Subsequent startups are fast.
@@ -137,6 +139,27 @@ MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 `bootstrap.sh` also writes `MEMSENSE_API_URL=http://127.0.0.1:<host-port>` into `.env`, so the OpenClaw plugin calls the same port. Update all subsequent URLs accordingly (e.g. `http://127.0.0.1:18787/dashboard`).
 
 </details>
+
+### No-Docker Runtime (macOS / Linux)
+
+Use these commands only if you are following the [no-Docker setup docs](docs/features/no-docker-quickstart.md). They manage local bash-started processes, not Docker Compose containers.
+
+```bash
+# First-time no-Docker setup, or after resetting dependencies/database config
+bash scripts/bootstrap-nodocker.sh local
+# or
+bash scripts/bootstrap-nodocker.sh openai
+
+# Start the local API server, embedding worker, tag worker,
+# and the BGE service when using local embedding
+bash scripts/start-bash.sh
+
+# Stop those local background processes when you are done,
+# before changing ports/providers in .env, or before switching back to Docker
+bash scripts/stop-bash.sh
+```
+
+After the first no-Docker setup, normal daily startup only needs `bash scripts/start-bash.sh`. If you need to replace already-running bash-managed processes, use `bash scripts/start-bash.sh --restart`.
 
 ### 2. Connect MemSense to OpenClaw
 
@@ -282,7 +305,7 @@ By default, `scripts/update.sh` updates the Docker path. For an existing macOS /
 | **Disk** | ~1 GB free | One-time download of `BAAI/bge-large-zh-v1.5` on first local run |
 | **OpenClaw** | ≥ 2026.4 | Declared as `peerDependencies` in [`package.json`](package.json); versions before 2026.4 can load `index.ts` directly without a build step |
 
-Docker is optional, but it is the recommended quick start because it brings up Postgres, server, workers, and BGE together. For macOS / Linux installs without Docker, use the [no-Docker setup](docs/features/no-docker-quickstart.md).
+Docker is optional, but it is the recommended quick start because it brings up Postgres, the API server, embedding worker, and BGE together. The bootstrap/update scripts place the tag worker automatically: on the host when OpenClaw is available, otherwise inside Docker with tag enrichment skipped in `auto` mode. For macOS / Linux installs without Docker, use the [no-Docker setup](docs/features/no-docker-quickstart.md).
 
 > **Choosing an embedding mode:** if you have a Qwen / OpenAI-compatible API key handy, `openai` mode skips the BGE download and starts in seconds. If you're running in an air-gapped or compliance-sensitive environment, pick `local`; pre-cache the Docker image and `BAAI/bge-large-zh-v1.5` model first, then MemSense can run without external embedding traffic.
 
@@ -354,7 +377,7 @@ Both use `FOR UPDATE SKIP LOCKED` claiming, exponential backoff (capped), and a 
 
 ### 5. Verifiably self-hosted
 
-`bash scripts/bootstrap.sh local` brings up Postgres, the server, workers, and the BGE embedding container in one shot. There is no managed control plane and no external embedding API in local mode. The first setup pulls the BGE model from Hugging Face and caches it in a Docker volume (`MemSense-hf`); after that, you can run from the cache and verify runtime traffic with `tcpdump`.
+`bash scripts/bootstrap.sh local` brings up Postgres, the API server, embedding worker, tag worker, and the BGE embedding service in one shot. The script chooses the tag-worker location automatically so it can reuse OpenClaw when available. There is no managed control plane and no external embedding API in local mode. The first setup pulls the BGE model from Hugging Face and caches it in a Docker volume (`MemSense-hf`); after that, you can run from the cache and verify runtime traffic with `tcpdump`.
 
 When you'd rather offload embedding, set `MEMSENSE_EMBEDDING_PROVIDER=openai` and point at any OpenAI-compatible endpoint (Qwen / DashScope / OpenAI / etc.). Local and cloud modes are swap-in-place — the rest of the system doesn't change.
 
@@ -541,19 +564,25 @@ All settings live in `.env` (Docker reads it via `docker-compose.yml`; the no-Do
 |---|---|---|
 | `MEMSENSE_WORKER_MAX_ATTEMPTS` | `5` | Embedding job retries before DLQ |
 | `MEMSENSE_WORKER_IDLE_MS` | `800` | Sleep between embedding-queue polls (ms) |
+| `MEMSENSE_TAG_WORKER_CONCURRENCY` | `3` | Host tag-worker process count started by `start-bash.sh`, Docker bootstrap, and Docker update when OpenClaw is available on the host |
 | `MEMSENSE_TAG_WORKER_MAX_ATTEMPTS` | `4` | Tag job retries before DLQ |
 | `MEMSENSE_TAG_WORKER_IDLE_MS` | `1200` | Sleep between tag-queue polls (ms) |
 | `MEMSENSE_TAG_RETRY` | `3` | Per-call retry budget inside the tagger client |
 
-### Optional tagger LLM
+### Tagger model (advanced)
 
-Leave unset to skip tagging; capture and retrieval still work, but `tags` and facets stay empty.
+Most installs should leave these settings unchanged. The default `auto` mode keeps setup one-step: no-Docker uses the host OpenClaw model directly; Docker bootstrap/update automatically uses a host tag worker when OpenClaw is available. If OpenClaw is not available, tag enrichment is skipped but capture, embedding, and retrieval continue to work.
+
+Only change these variables if you want to force a provider, disable tagging, or run a fully Docker-internal OpenAI-compatible tagger.
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `MEMSENSE_TAGGER_PROVIDER` | `auto` | `auto`, `openclaw_cli`, `openai`, or `off` to skip tagging |
+| `MEMSENSE_TAGGER_MODEL` | `auto` | `auto` for OpenClaw default model, or an explicit tagger model id |
+| `MEMSENSE_OPENCLAW_CLI` | `openclaw` | OpenClaw CLI command used in `auto` / `openclaw_cli` mode |
+| `MEMSENSE_OPENCLAW_TAGGER_TIMEOUT_MS` | `90000` | Timeout for each OpenClaw CLI tagger call |
 | `MEMSENSE_TAGGER_BASE_URL` | *(empty)* | OpenAI-compatible endpoint for the tagger model |
 | `MEMSENSE_TAGGER_API_KEY` | *(empty)* | Bearer token for the tagger |
-| `MEMSENSE_TAGGER_MODEL` | *(empty)* | Tagger model id |
 
 ---
 

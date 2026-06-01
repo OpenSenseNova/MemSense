@@ -1,4 +1,16 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
+
 const ALLOWED_KINDS = new Set(['stable', 'preference', 'episodic', 'ephemeral']);
+const EMPTY_TAGGER_OUTPUT = { tags: [], memory_kind: 'episodic', summary: null, facets: {} };
+let warnedOpenClawAutoUnavailable = false;
+
+function parsePositiveInt(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : fallback;
+}
 
 function sanitizeTags(tags) {
   return [...new Set((Array.isArray(tags) ? tags : [])
@@ -49,7 +61,9 @@ export function tryExtractTaggerOutput(text) {
   return { tags: [], memory_kind: 'episodic', summary: null, facets: {} };
 }
 
-const TAG_RETRY_LIMIT = Number(process.env.MEMSENSE_TAG_RETRY || 3);
+function getTagRetryLimit() {
+  return parsePositiveInt(process.env.MEMSENSE_TAG_RETRY || 3, 3);
+}
 
 function buildTaggerPrompt(content) {
   return [
@@ -70,13 +84,50 @@ function buildTaggerPrompt(content) {
 }
 
 function loadTaggerConfig() {
+  const provider = String(process.env.MEMSENSE_TAGGER_PROVIDER || 'auto').trim().toLowerCase();
+  if (['none', 'off', 'false', '0'].includes(provider)) {
+    return null;
+  }
+
+  if (provider === 'auto') {
+    const baseUrl = process.env.MEMSENSE_TAGGER_BASE_URL;
+    const apiKey = process.env.MEMSENSE_TAGGER_API_KEY;
+    const model = process.env.MEMSENSE_TAGGER_MODEL;
+    if (baseUrl && apiKey && model && model !== 'auto') {
+      return { provider: 'openai', baseUrl, apiKey, model };
+    }
+    return {
+      provider: 'openclaw_cli',
+      autoDetect: true,
+      cli: process.env.MEMSENSE_OPENCLAW_CLI || (process.platform === 'win32' ? 'openclaw.cmd' : 'openclaw'),
+      model: process.env.MEMSENSE_OPENCLAW_TAGGER_MODEL || process.env.MEMSENSE_TAGGER_MODEL || 'auto',
+      timeoutMs: parsePositiveInt(process.env.MEMSENSE_OPENCLAW_TAGGER_TIMEOUT_MS || 90000, 90000),
+    };
+  }
+
+  if (provider === 'openclaw' || provider === 'openclaw_cli') {
+    return {
+      provider: 'openclaw_cli',
+      autoDetect: false,
+      cli: process.env.MEMSENSE_OPENCLAW_CLI || (process.platform === 'win32' ? 'openclaw.cmd' : 'openclaw'),
+      model: process.env.MEMSENSE_OPENCLAW_TAGGER_MODEL || process.env.MEMSENSE_TAGGER_MODEL || 'auto',
+      timeoutMs: parsePositiveInt(process.env.MEMSENSE_OPENCLAW_TAGGER_TIMEOUT_MS || 90000, 90000),
+    };
+  }
+
   const baseUrl = process.env.MEMSENSE_TAGGER_BASE_URL;
   const apiKey = process.env.MEMSENSE_TAGGER_API_KEY;
   const model = process.env.MEMSENSE_TAGGER_MODEL;
+  if (provider && provider !== 'openai' && provider !== 'openai_compatible') {
+    throw new Error(`unsupported MEMSENSE_TAGGER_PROVIDER: ${provider}`);
+  }
   if (!baseUrl || !apiKey || !model) {
+    if (provider === 'openai' || provider === 'openai_compatible') {
+      throw new Error('MEMSENSE_TAGGER_PROVIDER=openai requires MEMSENSE_TAGGER_BASE_URL, MEMSENSE_TAGGER_API_KEY, and MEMSENSE_TAGGER_MODEL');
+    }
     return null;
   }
-  return { baseUrl, apiKey, model };
+  return { provider: 'openai', baseUrl, apiKey, model };
 }
 
 function getCompletionText(body) {
@@ -92,62 +143,163 @@ function getCompletionText(body) {
   return '';
 }
 
+function hasTaggerSignal(out) {
+  return Boolean(
+    out?.tags?.length ||
+    out?.summary ||
+    Object.keys(out?.facets || {}).length
+  );
+}
+
+function normalizeTaggerOutput(out) {
+  return {
+    tags: sanitizeTags(out.tags),
+    memory_kind: sanitizeMemoryKind(out.memory_kind),
+    summary: out.summary ? String(out.summary).slice(0, 200) : null,
+    facets: out.facets || {},
+  };
+}
+
+function isRetriableError(err) {
+  const msg = String(err?.message || err || '');
+  return /429|500|502|503|504|ETIMEDOUT|ECONNRESET|EAI_AGAIN|ENOTFOUND|connection error|timeout/i.test(msg);
+}
+
+async function runOpenAiCompatibleTagger(prompt, cfg) {
+  const { baseUrl, apiKey, model } = cfg;
+  const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: 'You are a background memory tagger. Return JSON only.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0,
+    }),
+  });
+
+  const rawBody = await response.text();
+  if (!response.ok) {
+    throw new Error(`tagger HTTP ${response.status}: ${rawBody.slice(0, 160)}`);
+  }
+
+  const body = JSON.parse(rawBody);
+  return getCompletionText(body) || rawBody;
+}
+
+async function execOpenClaw(cli, args, timeoutMs) {
+  try {
+    const { stdout } = await execFileAsync(cli, args, {
+      timeout: timeoutMs,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+    });
+    return String(stdout || '').trim();
+  } catch (err) {
+    const detail = String(err?.stderr || err?.stdout || err?.message || err || '').trim();
+    throw new Error(`openclaw CLI failed: ${detail.slice(0, 240)}`);
+  }
+}
+
+async function resolveOpenClawModel(cfg) {
+  const configured = String(cfg.model || '').trim();
+  if (configured && configured !== 'auto') return configured;
+  try {
+    const stdout = await execOpenClaw(cfg.cli, ['models', 'status', '--plain'], cfg.timeoutMs);
+    const model = stdout.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+    return model || null;
+  } catch (err) {
+    if (cfg.autoDetect) {
+      if (!warnedOpenClawAutoUnavailable) {
+        console.warn(`[tag-model] OpenClaw auto tagger unavailable; tagging skipped: ${err.message}`);
+        warnedOpenClawAutoUnavailable = true;
+      }
+      return null;
+    }
+    console.warn(`[tag-model] openclaw default model lookup failed; falling back to CLI default: ${err.message}`);
+    return null;
+  }
+}
+
+function getOpenClawCliText(stdout) {
+  const raw = String(stdout || '').trim();
+  if (!raw) return '';
+  try {
+    const body = JSON.parse(raw);
+    const outputsText = Array.isArray(body?.outputs)
+      ? body.outputs.map((item) => typeof item?.text === 'string' ? item.text : '').join('')
+      : '';
+    return getCompletionText(body) ||
+      outputsText ||
+      body?.content ||
+      body?.text ||
+      body?.output ||
+      body?.message ||
+      body?.response ||
+      body?.result?.content ||
+      body?.result?.text ||
+      body?.data?.content ||
+      body?.data?.text ||
+      raw;
+  } catch {
+    return raw;
+  }
+}
+
+async function runOpenClawCliTagger(prompt, cfg) {
+  const model = await resolveOpenClawModel(cfg);
+  if (!model && cfg.autoDetect) return null;
+  const args = ['infer', 'model', 'run'];
+  if (model) args.push('--model', model);
+  args.push('--prompt', prompt, '--json');
+  const stdout = await execOpenClaw(cfg.cli, args, cfg.timeoutMs);
+  return getOpenClawCliText(stdout);
+}
+
 export async function generateTagsWithOpenClaw(content) {
   const prompt = buildTaggerPrompt(content);
   const cfg = loadTaggerConfig();
   if (!cfg) {
-    return { tags: [], memory_kind: 'episodic', summary: null, facets: {} };
+    return EMPTY_TAGGER_OUTPUT;
   }
-  const { baseUrl, apiKey, model } = cfg;
 
+  const retryLimit = getTagRetryLimit();
   let lastError = null;
-  for (let attempt = 0; attempt < TAG_RETRY_LIMIT; attempt++) {
+  for (let attempt = 0; attempt < retryLimit; attempt++) {
     try {
-      const response = await fetch(`${String(baseUrl).replace(/\/$/, '')}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: 'You are a background memory tagger. Return JSON only.' },
-            { role: 'user', content: prompt },
-          ],
-          temperature: 0,
-        }),
-      });
-
-      const rawBody = await response.text();
-      if (!response.ok) {
-        throw new Error(`tagger HTTP ${response.status}: ${rawBody.slice(0, 160)}`);
+      const text = cfg.provider === 'openclaw_cli'
+        ? await runOpenClawCliTagger(prompt, cfg)
+        : await runOpenAiCompatibleTagger(prompt, cfg);
+      if (text == null && cfg.autoDetect) {
+        return EMPTY_TAGGER_OUTPUT;
       }
-
-      const body = JSON.parse(rawBody);
-      const text = getCompletionText(body) || rawBody;
 
       let out = { tags: [], memory_kind: 'episodic' };
       out = tryExtractTaggerOutput(text);
 
-      if (out.tags && out.tags.length > 0) {
-        return { tags: sanitizeTags(out.tags), memory_kind: sanitizeMemoryKind(out.memory_kind), summary: out.summary ? String(out.summary).slice(0, 200) : null, facets: out.facets || {} };
+      if (hasTaggerSignal(out)) {
+        return normalizeTaggerOutput(out);
       }
 
       lastError = `empty tags after parse (raw: ${String(text).slice(0, 120)}…)`;
-      console.warn(`[tag-model] attempt ${attempt + 1}/${TAG_RETRY_LIMIT}: ${lastError}`);
+      console.warn(`[tag-model] attempt ${attempt + 1}/${retryLimit}: ${lastError}`);
     } catch (err) {
       lastError = err.message || String(err);
-      const retriable = err.message?.includes('429') || err.message?.includes('500') || err.message?.includes('502') || err.message?.includes('503') || err.message?.includes('ETIMEDOUT');
-      if (attempt === TAG_RETRY_LIMIT - 1 || !retriable) {
-        console.warn(`[tag-model] attempt ${attempt + 1}/${TAG_RETRY_LIMIT} error: ${lastError}`);
-        if (!retriable) break;
+      const retriable = isRetriableError(err);
+      if (attempt === retryLimit - 1 || !retriable) {
+        console.warn(`[tag-model] attempt ${attempt + 1}/${retryLimit} error: ${lastError}`);
+        break;
       }
       await new Promise((r) => setTimeout(r, 1000 + attempt * 2000));
     }
   }
-  console.error(`[tag-model] all ${TAG_RETRY_LIMIT} attempts exhausted – ${lastError}`);
-  return { tags: [], memory_kind: 'episodic', summary: null, facets: {} };
+  console.error(`[tag-model] all ${retryLimit} attempts exhausted – ${lastError}`);
+  throw new Error(`tagger failed: ${lastError}`);
 }
 
 export function mergeTags(existing, generated) {

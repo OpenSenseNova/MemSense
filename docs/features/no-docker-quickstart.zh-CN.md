@@ -23,7 +23,7 @@ macOS 下，启动脚本可以通过 Homebrew 安装 PostgreSQL 和 pgvector。L
 
 ## 选择 embedding 模式
 
-只选择下面其中一种路径执行。
+只选择下面其中一种路径执行。`bootstrap-nodocker.sh` 是首次初始化步骤；`start-bash.sh` 是初始化完成后启动运行进程的步骤。
 
 ### 本地 embedding
 
@@ -50,9 +50,19 @@ bash scripts/start-bash.sh
 ## 运行控制
 
 ```bash
+# 首次 bootstrap 后、机器重启后、或手动 stop 后启动
 bash scripts/start-bash.sh
+
+# 不再使用本地服务，或修改 .env 前停止后台进程
 bash scripts/stop-bash.sh
+
+# 原地替换已经在运行的 bash 后台进程
+bash scripts/start-bash.sh --restart
 ```
+
+`start-bash.sh` 会启动本地 API server、embedding worker、tag worker；在 local embedding 模式下还会启动 BGE 服务。它要求 `.env` 和 Node 依赖已经存在，所以新 checkout 第一次要先运行 `bootstrap-nodocker.sh`。
+
+`stop-bash.sh` 会停止 `start-bash.sh` 启动的进程，并清理 `.runtime` 里的 pid/log 文件。修改 `.env` 中的端口或 provider、切回 Docker 路径，或者不再需要本地服务时执行它。
 
 日志位置：
 

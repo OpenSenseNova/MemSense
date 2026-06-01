@@ -111,6 +111,28 @@ function isDockerBootstrapEnv() {
   return Boolean(process.env.MEMSENSE_HOST_PORT) || /^https?:\/\/bge(?::|\/)/.test(bgeEndpoint);
 }
 
+function isWindowsRuntime() {
+  return process.platform === "win32";
+}
+
+function setupQuickStartHint() {
+  if (isWindowsRuntime()) {
+    return [
+      "Quick start (Windows PowerShell):",
+      "- Interactive: .\\scripts\\bootstrap.ps1",
+      "- OpenAI mode: .\\scripts\\bootstrap.ps1 openai",
+      "- Local mode:  .\\scripts\\bootstrap.ps1 local",
+    ].join("\n");
+  }
+
+  return [
+    "Quick start:",
+    "- Interactive: bash scripts/bootstrap.sh",
+    "- OpenAI mode: bash scripts/bootstrap.sh openai",
+    "- Local mode:  bash scripts/bootstrap.sh local",
+  ].join("\n");
+}
+
 async function shouldStartLocalService(ctx: any, pluginServiceMode?: string) {
   const mode = String(process.env.MEMSENSE_SERVICE_MODE || pluginServiceMode || "auto").toLowerCase();
   if (["external", "none", "off", "false", "0"].includes(mode)) {
@@ -123,7 +145,8 @@ async function shouldStartLocalService(ctx: any, pluginServiceMode?: string) {
   }
   if (mode === "local" || mode === "managed") return true;
   if (isDockerBootstrapEnv()) {
-    ctx.logger.warn(`memsense Docker-mode env detected but ${MEMSENSE_API_URL}/healthz is not healthy; run scripts/bootstrap.sh instead of starting local processes`);
+    const bootstrapCommand = isWindowsRuntime() ? ".\\scripts\\bootstrap.ps1" : "bash scripts/bootstrap.sh";
+    ctx.logger.warn(`memsense Docker-mode env detected but ${MEMSENSE_API_URL}/healthz is not healthy; run ${bootstrapCommand} instead of starting local processes`);
     return false;
   }
   return true;
@@ -173,7 +196,7 @@ function withEmbeddingSetupHint(message: string) {
     /MEMSENSE_OPENAI_API_KEY|embedding|bge_http|openai provider|required/i.test(m);
   if (!looksLikeEmbeddingConfigError) return m;
 
-  return `${m}\n\n[MEMSENSE_SETUP_REQUIRED]\nPlease ask user to choose embedding strategy:\n1) openai-compatible (Qwen/OpenAI API)\n2) local-bge (one-click local model deployment)\n\nQuick start:\n- Interactive: bash scripts/bootstrap.sh\n- OpenAI mode: bash scripts/bootstrap.sh openai\n- Local mode:  bash scripts/bootstrap.sh local`;
+  return `${m}\n\n[MEMSENSE_SETUP_REQUIRED]\nPlease ask user to choose embedding strategy:\n1) openai-compatible (Qwen/OpenAI API)\n2) local-bge (one-click local model deployment)\n\n${setupQuickStartHint()}`;
 }
 
 function fail(errorCode: string, message: string, traceId: string, degraded = false) {
@@ -338,6 +361,10 @@ export default {
       id: "memsense-server",
       async start(ctx) {
         if (!(await shouldStartLocalService(ctx, pluginServiceMode))) return;
+        if (isWindowsRuntime()) {
+          ctx.logger.warn("memsense native Windows local autostart is not supported because it uses Bash no-Docker scripts. Start MemSense with Docker Desktop from PowerShell: .\\scripts\\bootstrap.ps1 local or .\\scripts\\bootstrap.ps1 openai, then keep serviceMode=auto or set serviceMode=external.");
+          return;
+        }
         const scriptPath = join(rootDir, "scripts", "start-bash.sh");
         const child = spawn("bash", [scriptPath], { cwd: __dirname, stdio: "inherit", detached: true });
         child.unref();

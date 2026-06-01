@@ -28,9 +28,12 @@ export function buildSetupStatus(env = process.env) {
     provider,
     checks,
     next_steps: [
-      'Interactive setup: bash scripts/bootstrap.sh',
-      'OpenAI mode: bash scripts/bootstrap.sh openai',
-      'Local BGE mode: bash scripts/bootstrap.sh local',
+      'macOS/Linux/WSL/Git Bash interactive setup: bash scripts/bootstrap.sh',
+      'macOS/Linux/WSL/Git Bash OpenAI mode: bash scripts/bootstrap.sh openai',
+      'macOS/Linux/WSL/Git Bash Local BGE mode: bash scripts/bootstrap.sh local',
+      'Windows PowerShell interactive setup: .\\scripts\\bootstrap.ps1',
+      'Windows PowerShell OpenAI mode: .\\scripts\\bootstrap.ps1 openai',
+      'Windows PowerShell Local BGE mode: .\\scripts\\bootstrap.ps1 local',
     ],
   };
 }
