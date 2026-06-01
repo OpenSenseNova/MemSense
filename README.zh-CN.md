@@ -248,18 +248,18 @@ npm run smoke:api
 
 <table width="100%">
 <tr>
-<td width="50%" valign="top"><strong>macOS / Linux / WSL2 / Windows Git Bash</strong></td>
-<td width="50%" valign="top"><strong>Windows PowerShell</strong></td>
+<td width="60%" valign="top"><strong>macOS/Linux/WSL2/Windows Git Bash</strong></td>
+<td width="40%" valign="top"><strong>Windows PowerShell</strong></td>
 </tr>
 <tr>
-<td width="50%" valign="top">
+<td width="60%" valign="top">
 
 ```bash
 bash scripts/update.sh
 ```
 
 </td>
-<td width="50%" valign="top">
+<td width="40%" valign="top">
 
 ```powershell
 .\scripts\update.ps1
