@@ -515,6 +515,8 @@ uv run python evaluation/judge.py output/qa.MemSense_eval.jsonl \
 | `MEMSENSE_PORT` | `8787` | HTTP server 端口，container 内 |
 | `MEMSENSE_HOST_PORT` | `8787` | Docker host-port mapping，server 用 |
 | `MEMSENSE_POSTGRES_PORT` | `54329` | Docker host-port mapping，Postgres 用 |
+| `MEMSENSE_TENANT_ID` | `default` | OpenClaw 插件自动保存和 memory tools 使用的 tenant |
+| `MEMSENSE_SCOPE` | `user` | OpenClaw 插件自动保存和 memory tools 使用的 scope |
 | `MEMSENSE_DASHBOARD_TOKENS_JSON` | `{"demo":"admin"}` | RBAC token map：`token → role`，支持 viewer / operator / admin |
 | `MEMSENSE_DB_POOL_MAX` | `20` | 每个进程的 Postgres 最大连接数 |
 
@@ -627,6 +629,8 @@ uv run python evaluation/judge.py output/qa.MemSense_eval.jsonl \
       "serviceMode": { "type": "string", "enum": ["auto", "external", "local"], "default": "auto" },
       "localMode":   { "type": "boolean" },
       "serviceUrl":  { "type": "string" },
+      "tenantId":    { "type": "string", "default": "default" },
+      "scope":       { "type": "string", "enum": ["user", "team", "org", "task"], "default": "user" },
       "timeoutMs":   { "type": "integer", "minimum": 50, "default": 180 },
       "maxTopK":     { "type": "integer", "minimum": 1, "maximum": 20, "default": 8 }
     }
@@ -637,6 +641,7 @@ uv run python evaluation/judge.py output/qa.MemSense_eval.jsonl \
 - `serviceMode`：`auto` 会优先连接已经运行的 API；`external` 从不启动本地进程；`local` 会通过 `scripts/start-bash.sh` 启动 no-Docker 本地服务。
 - `localMode`：兼容旧配置，已不推荐；新配置请使用 `serviceMode`。
 - `serviceUrl`：覆盖 API URL；不设置时读取 `MEMSENSE_API_URL`，再回退到 `MEMSENSE_HOST_PORT` / `MEMSENSE_PORT`。
+- `tenantId` / `scope`：auto-capture 和 memory tools 内部使用的 tenant/scope；agent 不需要传这些字段。
 - `timeoutMs`：`before_prompt_build` search 的软超时预算；超时后 LLM 调用会继续，只是不注入记忆。
 - `maxTopK`：暴露给 agent 的 `top_k` 上限。
 
@@ -654,8 +659,8 @@ uv run python evaluation/judge.py output/qa.MemSense_eval.jsonl \
 
 | 类型 | 名称 | 说明 |
 |---|---|---|
-| Tool | `memory_search` | Top-k memory search；和 `/v1/memory/search` 表面一致，但移除了 `embedding` 字段 |
-| Tool | `memory_fetch_recent` | 最近 chunks；和 `/v1/memory/fetch_recent` 表面一致 |
+| Tool | `memory_search` | Top-k memory search；模型侧只暴露召回参数（`query`、`top_k` / `maxResults`），tenant/scope 由插件配置或环境变量补齐 |
+| Tool | `memory_fetch_recent` | 最近 chunks；模型侧只暴露 `limit`，tenant/scope 由插件配置或环境变量补齐 |
 | Service | `memsense-server` | 后台 lifecycle；Docker 模式下连接已运行 API，no-Docker local 模式下可用 `scripts/start-bash.sh` / `scripts/stop-bash.sh` 启停 |
 | CLI | `memsense-ping` | 检查插件是否已加载 |
 

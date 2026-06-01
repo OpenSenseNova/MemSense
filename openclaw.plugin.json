@@ -16,6 +16,12 @@
       },
       "localMode": { "type": "boolean" },
       "serviceUrl": { "type": "string" },
+      "tenantId": { "type": "string", "default": "default" },
+      "scope": {
+        "type": "string",
+        "enum": ["user", "team", "org", "task"],
+        "default": "user"
+      },
       "timeoutMs": { "type": "integer", "minimum": 50, "default": 180 },
       "maxTopK": { "type": "integer", "minimum": 1, "maximum": 20, "default": 8 }
     }

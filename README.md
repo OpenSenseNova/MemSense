@@ -504,6 +504,8 @@ All settings live in `.env` (Docker reads it via `docker-compose.yml`; the no-Do
 | `MEMSENSE_PORT` | `8787` | HTTP server port (in-container) |
 | `MEMSENSE_HOST_PORT` | `8787` | Docker host-port mapping for the server |
 | `MEMSENSE_POSTGRES_PORT` | `54329` | Docker host-port mapping for Postgres |
+| `MEMSENSE_TENANT_ID` | `default` | Tenant used by the OpenClaw plugin for auto-capture and memory tools |
+| `MEMSENSE_SCOPE` | `user` | Scope used by the OpenClaw plugin for auto-capture and memory tools |
 | `MEMSENSE_DASHBOARD_TOKENS_JSON` | `{"demo":"admin"}` | RBAC token map: `token → role` (viewer / operator / admin) |
 | `MEMSENSE_DB_POOL_MAX` | `20` | Max Postgres connections per process |
 
@@ -616,6 +618,8 @@ All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false
       "serviceMode": { "type": "string", "enum": ["auto", "external", "local"], "default": "auto" },
       "localMode":   { "type": "boolean" },
       "serviceUrl":  { "type": "string" },
+      "tenantId":    { "type": "string", "default": "default" },
+      "scope":       { "type": "string", "enum": ["user", "team", "org", "task"], "default": "user" },
       "timeoutMs":   { "type": "integer", "minimum": 50, "default": 180 },
       "maxTopK":     { "type": "integer", "minimum": 1, "maximum": 20, "default": 8 }
     }
@@ -626,6 +630,7 @@ All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false
 - `serviceMode` — `auto` first connects to an already-running API; `external` never starts local processes; `local` starts no-Docker local services via `scripts/start-bash.sh`.
 - `localMode` — deprecated compatibility flag; use `serviceMode`.
 - `serviceUrl` — override the API URL (otherwise reads `MEMSENSE_API_URL`, then `MEMSENSE_HOST_PORT` / `MEMSENSE_PORT`).
+- `tenantId` / `scope` — tenant and scope used internally by auto-capture and memory tools; agents do not provide these fields.
 - `timeoutMs` — soft budget for the `before_prompt_build` search; on overrun, the LLM call proceeds without injection.
 - `maxTopK` — hard ceiling for the `top_k` exposed to agents.
 
@@ -643,8 +648,8 @@ All endpoints return `{ "ok": true, "data": ... }` on success and `{ "ok": false
 
 | Kind | Name | Description |
 |---|---|---|
-| Tool | `memory_search` | Top-k memory search; same surface as `/v1/memory/search`, with `embedding` field stripped |
-| Tool | `memory_fetch_recent` | Recent chunks; same surface as `/v1/memory/fetch_recent` |
+| Tool | `memory_search` | Top-k memory search. Model-facing params are only recall controls (`query`, `top_k` / `maxResults`); tenant/scope are supplied by plugin config or env. |
+| Tool | `memory_fetch_recent` | Recent chunks. Model-facing params only expose `limit`; tenant/scope are supplied by plugin config or env. |
 | Service | `memsense-server` | Background lifecycle; in Docker mode it connects to the running API, in no-Docker local mode it can start/stop via `scripts/start-bash.sh` / `scripts/stop-bash.sh` |
 | CLI | `memsense-ping` | Sanity check that the plugin is loaded |
 

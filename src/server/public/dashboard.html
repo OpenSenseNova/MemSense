@@ -256,15 +256,15 @@
         <div class="card play-card">
           <div class="section-title">Prompt Injection Preview</div>
           <div class="search-row" style="margin-top:10px">
-            <input id="previewTenant" class="search-input" placeholder="tenant_id" value="default" />
-            <input id="previewScope" class="search-input" placeholder="scope" value="user" />
+            <input id="previewTenant" class="search-input" placeholder="tenant_id" value="default" readonly />
+            <input id="previewScope" class="search-input" placeholder="scope" value="user" readonly />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="previewSessionId" class="search-input" placeholder="session_id（可选，留空=不过滤）" value="" />
-            <input id="previewAgentId" class="search-input" placeholder="agent_id（可选，留空=不过滤）" value="" />
+            <input id="previewSessionId" class="search-input" placeholder="session_id（可选，留空=不过滤）" value="demo-session" readonly />
+            <input id="previewAgentId" class="search-input" placeholder="agent_id（可选，留空=不过滤）" value="memsense" readonly />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="previewUserId" class="search-input" placeholder="user_id（可选，留空=不过滤）" value="" />
+            <input id="previewUserId" class="search-input" placeholder="user_id（可选，留空=不过滤）" value="demo-user" readonly />
             <div class="limit">top_k <input id="previewTopK" type="number" min="1" max="20" value="4" /></div>
           </div>
           <div class="search-row" style="margin-top:10px">
@@ -275,15 +275,15 @@
         <div class="card play-card">
           <div class="section-title">memory_search</div>
           <div class="search-row" style="margin-top:10px">
-            <input id="toolTenant" class="search-input" placeholder="tenant_id" value="default" />
-            <input id="toolScope" class="search-input" placeholder="scope" value="user" />
+            <input id="toolTenant" class="search-input" placeholder="tenant_id" value="default" readonly />
+            <input id="toolScope" class="search-input" placeholder="scope" value="user" readonly />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="toolSessionId" class="search-input" placeholder="session_id（可选，留空=不过滤）" value="" />
-            <input id="toolAgentId" class="search-input" placeholder="agent_id（可选，留空=不过滤）" value="" />
+            <input id="toolSessionId" class="search-input" placeholder="session_id（可选，留空=不过滤）" value="demo-session" readonly />
+            <input id="toolAgentId" class="search-input" placeholder="agent_id（可选，留空=不过滤）" value="memsense" readonly />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="toolUserId" class="search-input" placeholder="user_id（可选，留空=不过滤）" value="" />
+            <input id="toolUserId" class="search-input" placeholder="user_id（可选，留空=不过滤）" value="demo-user" readonly />
             <input id="toolQuery" class="search-input" placeholder="query" value="苹果" />
             <div class="limit">top_k <input id="toolTopK" type="number" min="1" max="20" value="4" /></div>
           </div>
@@ -294,15 +294,15 @@
         <div class="card play-card">
           <div class="section-title">memory_fetch_recent</div>
           <div class="search-row" style="margin-top:10px">
-            <input id="toolRecentTenant" class="search-input" placeholder="tenant_id" value="default" />
-            <input id="toolRecentScope" class="search-input" placeholder="scope" value="user" />
+            <input id="toolRecentTenant" class="search-input" placeholder="tenant_id" value="default" readonly />
+            <input id="toolRecentScope" class="search-input" placeholder="scope" value="user" readonly />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="toolRecentSessionId" class="search-input" placeholder="session_id（可选，留空=不过滤）" value="" />
-            <input id="toolRecentAgentId" class="search-input" placeholder="agent_id（可选，留空=不过滤）" value="" />
+            <input id="toolRecentSessionId" class="search-input" placeholder="session_id（可选，留空=不过滤）" value="demo-session" readonly />
+            <input id="toolRecentAgentId" class="search-input" placeholder="agent_id（可选，留空=不过滤）" value="memsense" readonly />
           </div>
           <div class="search-row" style="margin-top:10px">
-            <input id="toolRecentUserId" class="search-input" placeholder="user_id（可选，留空=不过滤）" value="" />
+            <input id="toolRecentUserId" class="search-input" placeholder="user_id（可选，留空=不过滤）" value="demo-user" readonly />
             <div class="limit">limit <input id="toolRecentLimit" type="number" min="1" max="100" value="10" /></div>
             <button class="btn secondary" onclick="runToolFetchRecent()">Run memory_fetch_recent</button>
           </div>
@@ -652,9 +652,6 @@
         const payload = {
           tenant_id: byId('previewTenant').value || 'default',
           scope: byId('previewScope').value || 'user',
-          session_id: byId('previewSessionId').value || null,
-          agent_id: byId('previewAgentId').value || null,
-          user_id: byId('previewUserId').value || null,
           query: byId('previewPrompt').value || '',
           top_k: Number(byId('previewTopK').value || 4),
         };
@@ -683,9 +680,6 @@
         const payload = {
           tenant_id: byId('toolTenant').value || 'default',
           scope: byId('toolScope').value || 'user',
-          session_id: byId('toolSessionId').value || null,
-          agent_id: byId('toolAgentId').value || null,
-          user_id: byId('toolUserId').value || null,
           query: byId('toolQuery').value || '',
           top_k: Number(byId('toolTopK').value || 4),
         };
@@ -712,9 +706,6 @@
         const payload = {
           tenant_id: byId('toolRecentTenant').value || 'default',
           scope: byId('toolRecentScope').value || 'user',
-          session_id: byId('toolRecentSessionId').value || null,
-          agent_id: byId('toolRecentAgentId').value || null,
-          user_id: byId('toolRecentUserId').value || null,
           limit: Number(byId('toolRecentLimit').value || 10),
         };
         const r = await fetch('/v1/memory/fetch_recent', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });

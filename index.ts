@@ -48,6 +48,16 @@ function resolveMemsenseApiUrl(): string {
 }
 
 let MEMSENSE_API_URL = resolveMemsenseApiUrl();
+const VALID_MEMORY_SCOPES = new Set(["user", "team", "org", "task"]);
+
+function firstNonEmptyString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
 
 function directFetch(url: string, options: { method?: string; body?: string } = {}): Promise<{ ok: boolean; status: number; json: () => Promise<any> }> {
   return new Promise((resolve, reject) => {
@@ -276,15 +286,11 @@ const RetrieveSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    tenant_id: { type: "string" },
-    scope: { type: "string", enum: ["user", "team", "org", "task"] },
-    session_id: { type: "string" },
-    agent_id: { type: "string" },
-    user_id: { type: "string" },
     query: { type: "string" },
     top_k: { type: "integer", minimum: 1, maximum: 20 },
+    maxResults: { type: "integer", minimum: 1, maximum: 20 },
   },
-  required: ["tenant_id", "scope", "query"],
+  required: ["query"],
 };
 
 export default {
@@ -303,6 +309,29 @@ export default {
       : pluginConfig.localMode === false
         ? "external"
         : undefined;
+    function resolveTenantId(): string {
+      return firstNonEmptyString(
+        pluginConfig.tenantId,
+        pluginConfig.tenant_id,
+        process.env.MEMSENSE_TENANT_ID,
+      ) || "default";
+    }
+    function resolveMemoryScope(): string {
+      const scope = firstNonEmptyString(pluginConfig.scope, process.env.MEMSENSE_SCOPE) || "user";
+      return VALID_MEMORY_SCOPES.has(scope) ? scope : "user";
+    }
+    function resolveTopK(params: any, fallback = 4): number {
+      const configured = Number(pluginConfig.maxTopK);
+      const ceiling = Number.isFinite(configured)
+        ? Math.max(1, Math.min(20, Math.trunc(configured)))
+        : 20;
+      const raw = params?.top_k ?? params?.maxResults ?? fallback;
+      const n = Number(raw);
+      const requested = Number.isFinite(n)
+        ? Math.max(1, Math.min(20, Math.trunc(n)))
+        : Math.max(1, Math.min(20, Math.trunc(fallback)));
+      return Math.min(requested, ceiling);
+    }
     let localServiceStarted = false;
 
     api.registerService({
@@ -375,8 +404,8 @@ export default {
           return;
         }
         await callApi("/v1/memory/save", {
-          tenant_id: "default",
-          scope: "user",
+          tenant_id: resolveTenantId(),
+          scope: resolveMemoryScope(),
           session_id: String(sid),
           agent_id: pending.agentId || String(ctx?.agentId || event?.agentId || api.id || 'memsense'),
           user_id: pending.userId || resolveUserId(ctx, event),
@@ -421,8 +450,8 @@ export default {
         }
         console.log("[memsense] calling search API...", { searchUserId });
         const result = await callApi("/v1/memory/search", {
-          tenant_id: "default",
-          scope: "user",
+          tenant_id: resolveTenantId(),
+          scope: resolveMemoryScope(),
           user_id: searchUserId,
           query: prompt,
           top_k: 4,
@@ -453,13 +482,10 @@ export default {
         const traceId = withTrace("search");
         try {
           const chunks = await callApi("/v1/memory/search", {
-            tenant_id: params.tenant_id,
-            scope: params.scope,
-            session_id: params.session_id,
-            agent_id: params.agent_id,
-            user_id: params.user_id,
-            query: params.query,
-            top_k: params.top_k ?? 4,
+            tenant_id: resolveTenantId(),
+            scope: resolveMemoryScope(),
+            query: params?.query,
+            top_k: resolveTopK(params, 4),
           });
           const rawChunks = chunks?.chunks || chunks || [];
           const cleanChunks = rawChunks.map(({ embedding, ...rest }: any) => rest);
@@ -478,25 +504,17 @@ export default {
         type: "object",
         additionalProperties: false,
         properties: {
-          tenant_id: { type: "string" },
-          scope: { type: "string", enum: ["user", "team", "org", "task"] },
-          session_id: { type: "string" },
-          agent_id: { type: "string" },
-          user_id: { type: "string" },
           limit: { type: "integer", minimum: 1, maximum: 100 },
         },
-        required: ["tenant_id", "scope"],
+        required: [],
       },
       async execute(_toolCallId, params: any) {
         const traceId = withTrace("fetch_recent");
         try {
           const chunksResp = await callApi("/v1/memory/fetch_recent", {
-            tenant_id: params.tenant_id,
-            scope: params.scope,
-            session_id: params.session_id,
-            agent_id: params.agent_id,
-            user_id: params.user_id,
-            limit: params.limit ?? 10,
+            tenant_id: resolveTenantId(),
+            scope: resolveMemoryScope(),
+            limit: params?.limit ?? 10,
           });
           return ok(chunksResp, traceId);
         } catch (e: any) {
