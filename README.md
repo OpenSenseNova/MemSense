@@ -244,11 +244,11 @@ After you pull the latest code, run the update script for your shell:
 
 <table width="100%">
 <tr>
+<td width="50%" valign="top"><strong>macOS / Linux / WSL2 / Windows Git Bash</strong></td>
+<td width="50%" valign="top"><strong>Windows PowerShell</strong></td>
+</tr>
+<tr>
 <td width="50%" valign="top">
-
-**Bash**
-
-macOS / Linux / WSL2 / Windows Git Bash
 
 ```bash
 bash scripts/update.sh
@@ -256,10 +256,6 @@ bash scripts/update.sh
 
 </td>
 <td width="50%" valign="top">
-
-**PowerShell**
-
-Windows
 
 ```powershell
 .\scripts\update.ps1
