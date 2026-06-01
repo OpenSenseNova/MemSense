@@ -53,11 +53,36 @@ require_node_deps() {
     || fail "required Node dependencies are missing; run 'npm ci'"
 }
 
+start_detached() {
+  local log_file="$1"
+  shift
+  : > "$log_file"
+  if command -v setsid >/dev/null 2>&1; then
+    nohup setsid "$@" > "$log_file" 2>&1 < /dev/null &
+    echo "$!"
+  elif command -v perl >/dev/null 2>&1; then
+    perl -MPOSIX=setsid -e '
+      my $log = shift @ARGV;
+      my $pid = fork();
+      die "fork failed: $!" unless defined $pid;
+      if ($pid) { print "$pid\n"; exit 0; }
+      setsid() or die "setsid failed: $!";
+      open STDIN, "<", "/dev/null" or die "stdin: $!";
+      open STDOUT, ">>", $log or die "stdout: $!";
+      open STDERR, ">&", \*STDOUT or die "stderr: $!";
+      exec @ARGV or die "exec failed: $!";
+    ' "$log_file" "$@"
+  else
+    nohup "$@" > "$log_file" 2>&1 < /dev/null &
+    echo "$!"
+  fi
+}
+
 start_process() {
   local name="$1"
   shift
-  "$@" > ".runtime/${name}.log" 2>&1 &
-  local pid=$!
+  local pid
+  pid="$(start_detached ".runtime/${name}.log" "$@")"
   echo "$pid" > ".runtime/${name}.pid"
   started+=("$name")
   sleep 1
@@ -113,11 +138,11 @@ if [[ "$MEMSENSE_EMBEDDING_PROVIDER" == "bge_http" ]]; then
   fi
 fi
 
-start_process server npm run server
+start_process server node src/server/index.js
 wait_http_ok "http://127.0.0.1:${MEMSENSE_PORT}/healthz" server 45
 
-start_process worker npm run worker
-start_process tag-worker npm run tag-worker
+start_process worker node src/worker/index.js
+start_process tag-worker node src/worker/tag-worker.js
 
 echo "[memsense] services started"
 for name in "${started[@]}"; do
