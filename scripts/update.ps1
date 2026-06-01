@@ -56,6 +56,20 @@ function Read-EnvValue {
   return ""
 }
 
+function Resolve-PowerShellCommand {
+  $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+  if ($pwsh) {
+    return $pwsh.Source
+  }
+
+  $powershell = Get-Command powershell -ErrorAction SilentlyContinue
+  if ($powershell) {
+    return $powershell.Source
+  }
+
+  Fail "PowerShell executable not found on PATH"
+}
+
 function Detect-Strategy {
   if (-not [string]::IsNullOrWhiteSpace($Strategy)) {
     return $Strategy
@@ -97,7 +111,8 @@ if ($SkipPlugin) {
   Write-MemSenseLog "skipping OpenClaw plugin reinstall"
 } elseif ($DryRun -or (Get-Command openclaw -ErrorAction SilentlyContinue)) {
   $installer = Join-Path $ScriptDir "install-openclaw-plugin.ps1"
-  Invoke-Step "pwsh" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $installer, "-Force")
+  $powerShellCommand = Resolve-PowerShellCommand
+  Invoke-Step $powerShellCommand @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $installer, "-Force")
 } else {
   Write-MemSenseLog "openclaw CLI not found; service updated, plugin reinstall skipped"
 }
