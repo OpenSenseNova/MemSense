@@ -187,6 +187,17 @@ start_process() {
 start_tag_workers() {
   local count="$MEMSENSE_TAG_WORKER_CONCURRENCY"
   local i name
+  if [[ "${MEMSENSE_TAGGER_PROVIDER:-auto}" == "auto" ]]; then
+    local openclaw_cli="${MEMSENSE_OPENCLAW_CLI:-openclaw}"
+    if [[ -n "${MEMSENSE_TAGGER_BASE_URL:-}" && -n "${MEMSENSE_TAGGER_API_KEY:-}" && -n "${MEMSENSE_TAGGER_MODEL:-}" && "${MEMSENSE_TAGGER_MODEL}" != "auto" ]]; then
+      echo "[memsense] tagger provider auto resolved to configured OpenAI-compatible tagger"
+    elif command -v "$openclaw_cli" >/dev/null 2>&1; then
+      export MEMSENSE_TAGGER_PROVIDER="openclaw_cli"
+      echo "[memsense] tagger provider auto resolved to openclaw_cli"
+    else
+      echo "[memsense] tagger provider auto; no OpenClaw CLI or OpenAI-compatible tagger configured, tag enrichment will be skipped"
+    fi
+  fi
   stop_existing_tag_workers_if_requested
   for ((i = 1; i <= count; i++)); do
     if (( count == 1 )); then

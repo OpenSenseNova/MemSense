@@ -208,9 +208,13 @@ function Start-HostTagWorker {
   $taggerProvider = if ($env:MEMSENSE_TAGGER_PROVIDER) { $env:MEMSENSE_TAGGER_PROVIDER } else { Get-EnvValue "MEMSENSE_TAGGER_PROVIDER" }
   $taggerModel = if ($env:MEMSENSE_TAGGER_MODEL) { $env:MEMSENSE_TAGGER_MODEL } else { Get-EnvValue "MEMSENSE_TAGGER_MODEL" }
   $openClawCli = if ($env:MEMSENSE_OPENCLAW_CLI) { $env:MEMSENSE_OPENCLAW_CLI } else { Get-EnvValue "MEMSENSE_OPENCLAW_CLI" }
+  if ([string]::IsNullOrWhiteSpace($taggerProvider) -or $taggerProvider -eq "auto") {
+    $taggerProvider = "openclaw_cli"
+    Write-MemSenseLog "tagger provider auto resolved to openclaw_cli"
+  }
 
   $env:MEMSENSE_DATABASE_URL = "postgresql://memsense:memsense@127.0.0.1:$pgHostPort/memsense"
-  $env:MEMSENSE_TAGGER_PROVIDER = if ([string]::IsNullOrWhiteSpace($taggerProvider)) { "auto" } else { $taggerProvider }
+  $env:MEMSENSE_TAGGER_PROVIDER = $taggerProvider
   $env:MEMSENSE_TAGGER_MODEL = if ([string]::IsNullOrWhiteSpace($taggerModel)) { "auto" } else { $taggerModel }
   $env:MEMSENSE_OPENCLAW_CLI = if ([string]::IsNullOrWhiteSpace($openClawCli)) { "openclaw" } else { $openClawCli }
   $env:MEMSENSE_TAG_WORKER_CONCURRENCY = "$concurrency"
