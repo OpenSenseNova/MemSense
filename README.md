@@ -88,9 +88,9 @@ The bootstrap scripts create `.env` from `.env.example` if needed. For `openai`,
 
 Run **one** bootstrap command for the embedding mode you want.
 
-<table>
+<table width="100%">
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 **Local embedding**
 
@@ -98,12 +98,12 @@ Run **one** bootstrap command for the embedding mode you want.
 # macOS / Linux / WSL2
 bash scripts/bootstrap.sh local
 
-# Windows
+# Windows PowerShell
 .\scripts\bootstrap.ps1 local
 ```
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 **OpenAI-compatible embedding**
 
@@ -111,7 +111,7 @@ bash scripts/bootstrap.sh local
 # macOS / Linux / WSL2
 bash scripts/bootstrap.sh openai
 
-# Windows
+# Windows PowerShell
 .\scripts\bootstrap.ps1 openai
 ```
 
@@ -242,20 +242,20 @@ npm run smoke:api
 
 After you pull the latest code, run the update script for your shell:
 
-<table>
+<table width="100%">
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
-**macOS / Linux / WSL2**
+**macOS / Linux / WSL2 / Windows Git Bash**
 
 ```bash
 bash scripts/update.sh
 ```
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
-**Windows**
+**Windows PowerShell**
 
 ```powershell
 .\scripts\update.ps1

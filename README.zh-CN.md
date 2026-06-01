@@ -88,9 +88,9 @@ MemSense 安装分三步：启动本地服务，接入 OpenClaw，最后打开 d
 
 根据你选择的 embedding 模式，**只运行其中一个**启动命令。
 
-<table>
+<table width="100%">
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 **本地 embedding**
 
@@ -98,12 +98,12 @@ MemSense 安装分三步：启动本地服务，接入 OpenClaw，最后打开 d
 # macOS / Linux / WSL2
 bash scripts/bootstrap.sh local
 
-# Windows
+# Windows PowerShell
 .\scripts\bootstrap.ps1 local
 ```
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 **OpenAI-compatible embedding**
 
@@ -111,7 +111,7 @@ bash scripts/bootstrap.sh local
 # macOS / Linux / WSL2
 bash scripts/bootstrap.sh openai
 
-# Windows
+# Windows PowerShell
 .\scripts\bootstrap.ps1 openai
 ```
 
@@ -246,20 +246,20 @@ npm run smoke:api
 
 先自行拉取最新代码，然后按你的 shell 运行更新脚本：
 
-<table>
+<table width="100%">
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
-**macOS / Linux / WSL2**
+**macOS / Linux / WSL2 / Windows Git Bash**
 
 ```bash
 bash scripts/update.sh
 ```
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
-**Windows**
+**Windows PowerShell**
 
 ```powershell
 .\scripts\update.ps1
