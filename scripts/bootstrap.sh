@@ -25,6 +25,23 @@ upsert_env() {
   fi
 }
 
+wait_http_ok() {
+  local url="$1"
+  local label="$2"
+  local timeout="${3:-600}"
+  local i
+  echo "[memsense] waiting for $label at $url"
+  for ((i = 1; i <= timeout; i++)); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      echo "[memsense] $label healthy"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "[memsense] $label did not become healthy within ${timeout}s" >&2
+  return 1
+}
+
 STRATEGY="${1:-}"
 if [[ -z "$STRATEGY" ]]; then
   echo "Choose embedding strategy:"
@@ -39,6 +56,7 @@ if [[ -z "$STRATEGY" ]]; then
 fi
 
 HOST_PORT="${MEMSENSE_HOST_PORT:-${MEMSENSE_PORT:-8787}}"
+BGE_HOST_PORT="${MEMSENSE_BGE_HOST_PORT:-8088}"
 
 upsert_env MEMSENSE_PORT '8787'
 upsert_env MEMSENSE_HOST_PORT "$HOST_PORT"
@@ -58,6 +76,7 @@ elif [[ "$STRATEGY" == "local" ]]; then
   upsert_env MEMSENSE_BGE_MODEL 'BAAI/bge-large-zh-v1.5'
   docker compose --profile local-bge build server bge
   docker compose --profile local-bge up -d
+  wait_http_ok "http://127.0.0.1:${BGE_HOST_PORT}/healthz" "BGE embedding service"
 else
   echo "[memsense] invalid strategy: $STRATEGY"
   echo "Usage: bash scripts/bootstrap.sh [openai|local]"

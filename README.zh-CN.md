@@ -147,10 +147,11 @@ MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 > [!TIP]
 > **一键完成**：按你的 shell 运行对应脚本，安装并配置 OpenClaw 插件。
 >
-> macOS / Linux / WSL2：
+> macOS / Linux / WSL2 / Windows Git Bash：
 > ```bash
 > bash scripts/install-openclaw-plugin.sh --force
 > ```
+> WSL2 需要在 WSL2 内安装 Node.js 和 OpenClaw；Git Bash 需要能在 Git Bash 的 `PATH` 中找到 Windows 侧的 `npm` 和 `openclaw` 命令。
 >
 > Windows PowerShell：
 > ```powershell
@@ -269,6 +270,8 @@ bash scripts/update.sh
 </table>
 
 更新脚本会重建本地服务、应用数据库迁移，并在检测到 OpenClaw CLI 时刷新 OpenClaw 插件。它不会拉取代码、不会重写 `.env`、不会删除 Docker volumes，也不会执行 `docker compose down -v`。完整说明见 [更新指南](docs/features/update-guide.zh-CN.md)。
+
+默认情况下，`scripts/update.sh` 会更新 Docker 路径。已有 macOS / Linux 无 Docker 安装时，请运行 `bash scripts/update.sh --runtime nodocker`。`scripts/update.ps1` 用于 Windows Docker 路径；Windows 无 Docker 更新还在测试中。
 
 ---
 

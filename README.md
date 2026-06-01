@@ -21,7 +21,7 @@
 
 MemSense is an open-source memory plugin built for OpenClaw, turning long-term memory from unstable and hard to inspect into a reliable, manageable foundation.
 It preserves QA turns and manages memory with clear rules, reducing information loss, conflicts, and memory that gets messier over time.
-Docker-first setup in a few commands, with advanced no-Docker docs available. [**Quick Start**](#quick-start)
+Docker-first setup in a few commands, with no-Docker docs available. [**Quick Start**](#quick-start)
 
 <p align="center">
   <img alt="MemSense demo showing OpenClaw remembering a user's favorite pixel art game" src="docs/assets/Image_en.png" width="100%" />
@@ -69,7 +69,7 @@ MemSense setup has three steps: start the local service, connect it to OpenClaw,
 Setup overview:
 
 - Docker / Docker Desktop: [Docker path (recommended)](#docker-path-recommended)
-- macOS / Linux no Docker: [advanced no-Docker setup](docs/features/no-docker-quickstart.md); Windows no-Docker install is still being tested
+- macOS / Linux no Docker: [no-Docker setup](docs/features/no-docker-quickstart.md); Windows no-Docker install is still being tested
 - MemSense service already running: [Connect MemSense to OpenClaw](#2-connect-memsense-to-openclaw)
 - Setup completed: [Verify](#3-verify)
 
@@ -143,10 +143,11 @@ MEMSENSE_HOST_PORT=18787 bash scripts/bootstrap.sh local
 > [!TIP]
 > **One-liner:** run the script for your shell to install and configure the OpenClaw plugin.
 >
-> macOS / Linux / WSL2:
+> macOS / Linux / WSL2 / Windows Git Bash:
 > ```bash
 > bash scripts/install-openclaw-plugin.sh --force
 > ```
+> For WSL2, install Node.js and OpenClaw inside WSL2. For Git Bash, make sure the Windows `npm` and `openclaw` commands are available on the Git Bash `PATH`.
 >
 > Windows PowerShell:
 > ```powershell
@@ -266,6 +267,8 @@ bash scripts/update.sh
 
 The update script rebuilds local services, applies database migrations, and refreshes the OpenClaw plugin when the OpenClaw CLI is available. It does not pull code, rewrite `.env`, delete Docker volumes, or run `docker compose down -v`. See the full [Update guide](docs/features/update-guide.md).
 
+By default, `scripts/update.sh` updates the Docker path. For an existing macOS / Linux no-Docker install, run `bash scripts/update.sh --runtime nodocker`. `scripts/update.ps1` is for the Windows Docker path; Windows no-Docker updates are still being tested.
+
 ---
 
 ## Prerequisites
@@ -279,7 +282,7 @@ The update script rebuilds local services, applies database migrations, and refr
 | **Disk** | ~1 GB free | One-time download of `BAAI/bge-large-zh-v1.5` on first local run |
 | **OpenClaw** | ≥ 2026.4 | Declared as `peerDependencies` in [`package.json`](package.json); versions before 2026.4 can load `index.ts` directly without a build step |
 
-Docker is optional, but it is the recommended quick start because it brings up Postgres, server, workers, and BGE together. For macOS / Linux installs without Docker, use the [advanced no-Docker setup](docs/features/no-docker-quickstart.md).
+Docker is optional, but it is the recommended quick start because it brings up Postgres, server, workers, and BGE together. For macOS / Linux installs without Docker, use the [no-Docker setup](docs/features/no-docker-quickstart.md).
 
 > **Choosing an embedding mode:** if you have a Qwen / OpenAI-compatible API key handy, `openai` mode skips the BGE download and starts in seconds. If you're running in an air-gapped or compliance-sensitive environment, pick `local`; pre-cache the Docker image and `BAAI/bge-large-zh-v1.5` model first, then MemSense can run without external embedding traffic.
 

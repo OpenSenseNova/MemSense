@@ -43,6 +43,33 @@ function Invoke-Step {
   }
 }
 
+function Wait-HttpOk {
+  param(
+    [string]$Url,
+    [string]$Label,
+    [int]$TimeoutSeconds = 600
+  )
+  Write-MemSenseLog "waiting for $Label at $Url"
+  if ($DryRun) {
+    Write-MemSenseLog "(dry-run) wait for $Label"
+    return
+  }
+
+  for ($i = 1; $i -le $TimeoutSeconds; $i++) {
+    try {
+      $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
+      if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 300) {
+        Write-MemSenseLog "$Label healthy"
+        return
+      }
+    } catch {
+      Start-Sleep -Seconds 1
+    }
+  }
+
+  Fail "$Label did not become healthy within ${TimeoutSeconds}s"
+}
+
 function Read-EnvLines {
   if (Test-Path -LiteralPath $EnvPath) {
     return [System.IO.File]::ReadAllLines($EnvPath)
@@ -129,6 +156,12 @@ $HostPort = if ($env:MEMSENSE_HOST_PORT) {
   "8787"
 }
 
+$BgeHostPort = if ($env:MEMSENSE_BGE_HOST_PORT) {
+  $env:MEMSENSE_BGE_HOST_PORT
+} else {
+  "8088"
+}
+
 Set-EnvValue "MEMSENSE_PORT" "8787"
 Set-EnvValue "MEMSENSE_HOST_PORT" $HostPort
 Set-EnvValue "MEMSENSE_API_URL" "http://127.0.0.1:$HostPort"
@@ -147,6 +180,7 @@ if ($Strategy -eq "openai") {
   Set-EnvValue "MEMSENSE_BGE_MODEL" "BAAI/bge-large-zh-v1.5"
   Invoke-Step "docker" @("compose", "--profile", "local-bge", "build", "server", "bge")
   Invoke-Step "docker" @("compose", "--profile", "local-bge", "up", "-d")
+  Wait-HttpOk "http://127.0.0.1:$BgeHostPort/healthz" "BGE embedding service"
 }
 
 Write-MemSenseLog "done. Check services with: docker compose ps"

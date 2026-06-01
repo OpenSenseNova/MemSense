@@ -41,6 +41,28 @@ run() {
   fi
 }
 
+wait_http_ok() {
+  local url="$1"
+  local label="$2"
+  local timeout="${3:-600}"
+  local i
+  log "waiting for $label at $url"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "(dry-run) wait for $label"
+    return
+  fi
+
+  for ((i = 1; i <= timeout; i++)); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      log "$label healthy"
+      return
+    fi
+    sleep 1
+  done
+
+  fail "$label did not become healthy within ${timeout}s"
+}
+
 read_env() {
   local key="$1"
   [[ -f .env ]] || return 0
@@ -75,7 +97,12 @@ update_docker() {
   if [[ "$STRATEGY" == "openai" ]]; then
     run docker compose up -d --build postgres server worker tag-worker
   else
+    export MEMSENSE_BGE_ENDPOINT="http://bge:8080/embed"
     run docker compose --profile local-bge up -d --build
+    local bge_host_port
+    bge_host_port="$(read_env MEMSENSE_BGE_HOST_PORT)"
+    bge_host_port="${bge_host_port:-8088}"
+    wait_http_ok "http://127.0.0.1:${bge_host_port}/healthz" "BGE embedding service"
   fi
 }
 

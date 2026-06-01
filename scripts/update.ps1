@@ -42,6 +42,33 @@ function Invoke-Step {
   }
 }
 
+function Wait-HttpOk {
+  param(
+    [string]$Url,
+    [string]$Label,
+    [int]$TimeoutSeconds = 600
+  )
+  Write-MemSenseLog "waiting for $Label at $Url"
+  if ($DryRun) {
+    Write-MemSenseLog "(dry-run) wait for $Label"
+    return
+  }
+
+  for ($i = 1; $i -le $TimeoutSeconds; $i++) {
+    try {
+      $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
+      if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 300) {
+        Write-MemSenseLog "$Label healthy"
+        return
+      }
+    } catch {
+      Start-Sleep -Seconds 1
+    }
+  }
+
+  Fail "$Label did not become healthy within ${TimeoutSeconds}s"
+}
+
 function Read-EnvValue {
   param([string]$Key)
   if (-not (Test-Path -LiteralPath $EnvPath)) {
@@ -104,7 +131,13 @@ if (-not $DryRun -and -not (Get-Command docker -ErrorAction SilentlyContinue)) {
 if ($Strategy -eq "openai") {
   Invoke-Step "docker" @("compose", "up", "-d", "--build", "postgres", "server", "worker", "tag-worker")
 } else {
+  $env:MEMSENSE_BGE_ENDPOINT = "http://bge:8080/embed"
   Invoke-Step "docker" @("compose", "--profile", "local-bge", "up", "-d", "--build")
+  $bgeHostPort = Read-EnvValue "MEMSENSE_BGE_HOST_PORT"
+  if ([string]::IsNullOrWhiteSpace($bgeHostPort)) {
+    $bgeHostPort = "8088"
+  }
+  Wait-HttpOk "http://127.0.0.1:$bgeHostPort/healthz" "BGE embedding service"
 }
 
 if ($SkipPlugin) {
