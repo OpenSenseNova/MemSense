@@ -246,7 +246,9 @@ After you pull the latest code, run the update script for your shell:
 <tr>
 <td width="50%" valign="top">
 
-**macOS / Linux / WSL2 / Windows Git Bash**
+**Bash**
+
+macOS / Linux / WSL2 / Windows Git Bash
 
 ```bash
 bash scripts/update.sh
@@ -255,7 +257,9 @@ bash scripts/update.sh
 </td>
 <td width="50%" valign="top">
 
-**Windows PowerShell**
+**PowerShell**
+
+Windows
 
 ```powershell
 .\scripts\update.ps1
