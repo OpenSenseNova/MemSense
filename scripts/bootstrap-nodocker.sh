@@ -96,8 +96,20 @@ elif [[ "$STRATEGY" == "local" ]]; then
   upsert_env MEMSENSE_BGE_ENDPOINT 'http://127.0.0.1:8080/embed'
   upsert_env MEMSENSE_BGE_MODEL "$BGE_MODEL"
   # install bge python service
-  PYTHON_BIN="${PYTHON_BIN:-python3}"
   VENV_DIR=".venv-bge"
+  if [[ -x "$VENV_DIR/bin/python" ]]; then
+    PYTHON_BIN="$VENV_DIR/bin/python"
+  else
+    PYTHON_BIN="${PYTHON_BIN:-python3}"
+  fi
+  if ! "$PYTHON_BIN" - <<'PY'
+import sys
+raise SystemExit(0 if sys.version_info >= (3, 11) else 1)
+PY
+  then
+    echo "[memsense] Python 3.11+ is required for local BGE no-Docker mode. Set PYTHON_BIN to a Python 3.11+ interpreter and retry."
+    exit 1
+  fi
   if [[ ! -d "$VENV_DIR" ]]; then
     "$PYTHON_BIN" -m venv "$VENV_DIR"
   fi

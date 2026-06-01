@@ -303,22 +303,31 @@ export async function searchChunks({ tenant_id, scope, session_id, agent_id, use
   qfts AS (
     SELECT websearch_to_tsquery('english', $7) AS tsq
   ),
+  qvec AS (
+    SELECT $6::vector AS v, vector_dims($6::vector) AS dims
+  ),
   r_vec_full AS (
-    SELECT id, ROW_NUMBER() OVER (ORDER BY (1 - (embedding <=> $6::vector)) DESC) AS rn,
+    SELECT f.id, ROW_NUMBER() OVER (ORDER BY (1 - (f.embedding <=> qvec.v)) DESC) AS rn,
            'vec_full'::text AS route
-    FROM filtered WHERE embedding IS NOT NULL
+    FROM filtered f CROSS JOIN qvec
+    WHERE f.embedding IS NOT NULL
+      AND vector_dims(f.embedding) = qvec.dims
     LIMIT $8
   ),
   r_vec_user AS (
-    SELECT id, ROW_NUMBER() OVER (ORDER BY (1 - (embedding_user <=> $6::vector)) DESC) AS rn,
+    SELECT f.id, ROW_NUMBER() OVER (ORDER BY (1 - (f.embedding_user <=> qvec.v)) DESC) AS rn,
            'vec_user'::text AS route
-    FROM filtered WHERE embedding_user IS NOT NULL
+    FROM filtered f CROSS JOIN qvec
+    WHERE f.embedding_user IS NOT NULL
+      AND vector_dims(f.embedding_user) = qvec.dims
     LIMIT $8
   ),
   r_vec_asst AS (
-    SELECT id, ROW_NUMBER() OVER (ORDER BY (1 - (embedding_assistant <=> $6::vector)) DESC) AS rn,
+    SELECT f.id, ROW_NUMBER() OVER (ORDER BY (1 - (f.embedding_assistant <=> qvec.v)) DESC) AS rn,
            'vec_asst'::text AS route
-    FROM filtered WHERE embedding_assistant IS NOT NULL
+    FROM filtered f CROSS JOIN qvec
+    WHERE f.embedding_assistant IS NOT NULL
+      AND vector_dims(f.embedding_assistant) = qvec.dims
     LIMIT $8
   ),
   r_lex AS (
@@ -334,27 +343,35 @@ export async function searchChunks({ tenant_id, scope, session_id, agent_id, use
     LIMIT $8
   ),
   r_facet_pi AS (
-    SELECT id, ROW_NUMBER() OVER (ORDER BY (1 - (embedding_facet_personal_info <=> $6::vector)) DESC) AS rn,
+    SELECT f.id, ROW_NUMBER() OVER (ORDER BY (1 - (f.embedding_facet_personal_info <=> qvec.v)) DESC) AS rn,
            'facet_personal_info'::text AS route
-    FROM filtered WHERE embedding_facet_personal_info IS NOT NULL
+    FROM filtered f CROSS JOIN qvec
+    WHERE f.embedding_facet_personal_info IS NOT NULL
+      AND vector_dims(f.embedding_facet_personal_info) = qvec.dims
     LIMIT $8
   ),
   r_facet_pref AS (
-    SELECT id, ROW_NUMBER() OVER (ORDER BY (1 - (embedding_facet_preferences <=> $6::vector)) DESC) AS rn,
+    SELECT f.id, ROW_NUMBER() OVER (ORDER BY (1 - (f.embedding_facet_preferences <=> qvec.v)) DESC) AS rn,
            'facet_preferences'::text AS route
-    FROM filtered WHERE embedding_facet_preferences IS NOT NULL
+    FROM filtered f CROSS JOIN qvec
+    WHERE f.embedding_facet_preferences IS NOT NULL
+      AND vector_dims(f.embedding_facet_preferences) = qvec.dims
     LIMIT $8
   ),
   r_facet_ev AS (
-    SELECT id, ROW_NUMBER() OVER (ORDER BY (1 - (embedding_facet_events <=> $6::vector)) DESC) AS rn,
+    SELECT f.id, ROW_NUMBER() OVER (ORDER BY (1 - (f.embedding_facet_events <=> qvec.v)) DESC) AS rn,
            'facet_events'::text AS route
-    FROM filtered WHERE embedding_facet_events IS NOT NULL
+    FROM filtered f CROSS JOIN qvec
+    WHERE f.embedding_facet_events IS NOT NULL
+      AND vector_dims(f.embedding_facet_events) = qvec.dims
     LIMIT $8
   ),
   r_vec_next_user AS (
-    SELECT id, ROW_NUMBER() OVER (ORDER BY (1 - (embedding_next_user <=> $6::vector)) DESC) AS rn,
+    SELECT f.id, ROW_NUMBER() OVER (ORDER BY (1 - (f.embedding_next_user <=> qvec.v)) DESC) AS rn,
            'vec_next_user'::text AS route
-    FROM filtered WHERE embedding_next_user IS NOT NULL
+    FROM filtered f CROSS JOIN qvec
+    WHERE f.embedding_next_user IS NOT NULL
+      AND vector_dims(f.embedding_next_user) = qvec.dims
     LIMIT $8
   ),
   rrf AS (

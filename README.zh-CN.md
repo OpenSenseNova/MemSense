@@ -84,6 +84,8 @@ MemSense 安装分三步：启动本地服务，接入 OpenClaw，最后打开 d
 
 启动脚本会在需要时从 `.env.example` 创建 `.env`。如果选择 `openai`，请先在 `.env` 里设置 `MEMSENSE_OPENAI_API_KEY`，再使用记忆捕获或检索。
 
+> **切换 embedding 模型的影响：** 尽量让同一个数据库只使用一套 embedding provider / model。不同 provider 或 model 生成的向量不保证可直接比较，维度也可能不同，例如本地 BGE 可能是 1024 维，而部分 OpenAI-compatible / Doubao embedding 是 2048 维。如果在已有数据库上切换 `MEMSENSE_EMBEDDING_PROVIDER`、`MEMSENSE_EMBEDDING_MODEL` 或 `MEMSENSE_BGE_MODEL`，维度不兼容的旧 embedding 会被向量搜索跳过。旧记忆仍然保留，也可能通过关键词、最近记录或 dashboard 看到，但向量召回可能搜不到，直到你使用干净数据库或用新模型重新生成 embedding。
+
 ### Docker 路径
 
 根据你选择的 embedding 模式，**只运行其中一个**启动命令。
