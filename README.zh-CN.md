@@ -13,7 +13,7 @@
   <img alt="license" src="https://img.shields.io/badge/license-MIT-22c55e" />
   <img alt="self-hosted" src="https://img.shields.io/badge/self--hosted-f59e0b" />
   <img alt="no external API" src="https://img.shields.io/badge/external%20API-not%20required-111827" />
-  <a href="docs/features/main.pdf"><img alt="paper" src="https://img.shields.io/badge/paper-PDF-8b5cf6" /></a>
+  <a href="https://github.com/OpenSenseNova/MemSense/raw/main/docs/features/main.pdf"><img alt="paper" src="https://img.shields.io/badge/paper-PDF-8b5cf6" /></a>
 </p>
 
 > 给 OpenClaw 一个真正可用的长期记忆。
